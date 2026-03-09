@@ -4,11 +4,24 @@
 
 ```mermaid
 erDiagram
+    USER ||--o{ WORKOUT_PLAN : "owns"
+    USER ||--o{ WORKOUT_SESSION : "owns"
     EXERCISE ||--o{ WORKOUT_PLAN_EXERCISE : "has many"
     WORKOUT_PLAN ||--o{ WORKOUT_PLAN_EXERCISE : "has many"
     WORKOUT_PLAN ||--o{ WORKOUT_SESSION : "has many"
     WORKOUT_SESSION ||--o{ WORKOUT_SET : "has many"
     EXERCISE ||--o{ WORKOUT_SET : "has many"
+
+    USER {
+        long id
+        string username
+        string email
+        string password
+        string firstName
+        string lastName
+        timestamp createdAt
+        timestamp updatedAt
+    }
 
     EXERCISE {
         long id
@@ -22,6 +35,7 @@ erDiagram
 
     WORKOUT_PLAN {
         long id
+        long user_id FK
         string name
         string description
         enum planType
@@ -43,6 +57,7 @@ erDiagram
 
     WORKOUT_SESSION {
         long id
+        long user_id FK
         date sessionDate
         timestamp startTime
         timestamp endTime
@@ -67,8 +82,9 @@ erDiagram
 
 ## Relationships
 
+- **User**: Application users who own workout plans and sessions
 - **Exercise**: Master list of all exercises
-- **WorkoutPlan**: Reusable workout templates (Leg Day, Push Day, etc.)
+- **WorkoutPlan**: Reusable workout templates (Leg Day, Push Day, etc.) owned by users
 - **WorkoutPlanExercise**: Connects exercises to plans with metadata (order, target reps, rest)
-- **WorkoutSession**: Records one actual workout performed on a date
+- **WorkoutSession**: Records one actual workout performed on a date by a user
 - **WorkoutSet**: Records each individual set completed in a session
