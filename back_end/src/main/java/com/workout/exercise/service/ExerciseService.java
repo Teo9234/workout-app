@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.workout.core.exceptions.ResourceNotFoundException;
 import com.workout.exercise.model.Equipment;
 import com.workout.exercise.model.Exercise;
 import com.workout.exercise.model.MuscleGroup;
@@ -28,7 +29,7 @@ public class ExerciseService {
     public Exercise getExerciseById(Long id) {
         // findById returns Optional; throw when the record does not exist.
         return exerciseRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Exercise not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Exercise", "id", id));
     }
 
     // Get exercises by muscle group

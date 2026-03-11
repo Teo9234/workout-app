@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.workout.core.exceptions.ResourceNotFoundException;
 import com.workout.plan.model.WorkoutPlan;
 import com.workout.plan.repository.WorkoutPlanRepository;
 import com.workout.plan.model.PlanDifficulty;
@@ -28,7 +29,7 @@ public class WorkoutPlanService {
     public WorkoutPlan getWorkoutPlanById(Long id) {
         // findById returns Optional; throw when the record does not exist.
         return workoutPlanRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Workout plan not found with id: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("WorkoutPlan", "id", id));
     }
 
     // Get workout plans by type
