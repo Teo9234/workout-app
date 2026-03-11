@@ -1,6 +1,8 @@
 package com.workout.session.service;
 
+import java.time.DateTimeException;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -41,6 +43,57 @@ public class WorkoutSessionService {
     // Get sessions for a user between two dates
     public List<WorkoutSession> getByUserAndDateRange(User user, LocalDate startDate, LocalDate endDate) {
         return workoutSessionRepository.findByUserAndSessionDateBetween(user, startDate, endDate);
+    }
+
+    // Get sessions from this month for a user (useful for stats)
+    public List<WorkoutSession> getByUserThisMonth(User user) {
+        YearMonth currentMonth = YearMonth.now();
+        return getByUserForMonth(user, currentMonth.getYear(), currentMonth.getMonthValue());
+    }
+
+    // Get sessions for a specific month/year so the frontend can navigate month to
+    // month.
+    public List<WorkoutSession> getByUserForMonth(User user, int year, int month) {
+        try {
+            YearMonth targetMonth = YearMonth.of(year, month);
+            LocalDate startDate = targetMonth.atDay(1);
+            LocalDate endDate = targetMonth.atEndOfMonth();
+            return getByUserAndDateRange(user, startDate, endDate);
+        } catch (DateTimeException ex) {
+            throw new IllegalArgumentException("Invalid year/month: " + year + "-" + month);
+        }
+    }
+
+    // Get sessions from a selected start month up to the current month (inclusive).
+    public List<WorkoutSession> getByUserFromStartMonth(User user, int startYear, int startMonth) {
+        YearMonth currentMonth = YearMonth.now();
+        return getByUserFromMonthToMonth(
+                user,
+                startYear,
+                startMonth,
+                currentMonth.getYear(),
+                currentMonth.getMonthValue());
+    }
+
+    // Get sessions between two months (inclusive) for month-to-month calendar
+    // navigation.
+    public List<WorkoutSession> getByUserFromMonthToMonth(User user, int startYear, int startMonth, int endYear,
+            int endMonth) {
+        try {
+            YearMonth start = YearMonth.of(startYear, startMonth);
+            YearMonth end = YearMonth.of(endYear, endMonth);
+
+            if (start.isAfter(end)) {
+                throw new IllegalArgumentException("Start month must be before or equal to end month");
+            }
+
+            LocalDate startDate = start.atDay(1);
+            LocalDate endDate = end.atEndOfMonth();
+            return getByUserAndDateRange(user, startDate, endDate);
+        } catch (DateTimeException ex) {
+            throw new IllegalArgumentException(
+                    "Invalid month range: " + startYear + "-" + startMonth + " to " + endYear + "-" + endMonth);
+        }
     }
 
     // Get sessions for a workout plan
