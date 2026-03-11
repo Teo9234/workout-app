@@ -1,0 +1,79 @@
+package com.workout.planexercise.service;
+
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
+import com.workout.core.exceptions.ResourceNotFoundException;
+import com.workout.exercise.model.Exercise;
+import com.workout.plan.model.WorkoutPlan;
+import com.workout.planexercise.model.WorkoutPlanExercise;
+import com.workout.planexercise.repository.WorkoutPlanExerciseRepository;
+
+@Service
+public class WorkoutPlanExerciseService {
+
+    private final WorkoutPlanExerciseRepository workoutPlanExerciseRepository;
+
+    // Constructor injection: Spring provides WorkoutPlanExerciseRepository
+    // automatically.
+    public WorkoutPlanExerciseService(WorkoutPlanExerciseRepository workoutPlanExerciseRepository) {
+        this.workoutPlanExerciseRepository = workoutPlanExerciseRepository;
+    }
+
+    // Get all join rows
+    public List<WorkoutPlanExercise> getAllWorkoutPlanExercises() {
+        return workoutPlanExerciseRepository.findAll();
+    }
+
+    // Get one join row by id
+    public WorkoutPlanExercise getWorkoutPlanExerciseById(Long id) {
+        return workoutPlanExerciseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("WorkoutPlanExercise", "id", id));
+    }
+
+    // Get ordered exercise list for a workout plan
+    public List<WorkoutPlanExercise> getByWorkoutPlan(WorkoutPlan workoutPlan) {
+        return workoutPlanExerciseRepository.findByWorkoutPlanOrderByOrderIndexAsc(workoutPlan);
+    }
+
+    // Get a specific exercise inside a specific plan
+    public WorkoutPlanExercise getByWorkoutPlanAndExercise(WorkoutPlan workoutPlan, Exercise exercise) {
+        WorkoutPlanExercise result = workoutPlanExerciseRepository.findByWorkoutPlanAndExercise(workoutPlan, exercise);
+        if (result == null) {
+            throw new ResourceNotFoundException(
+                    "WorkoutPlanExercise",
+                    "workoutPlan/exercise",
+                    workoutPlan.getId() + "/" + exercise.getId());
+        }
+        return result;
+    }
+
+    // Create a join row
+    public WorkoutPlanExercise createWorkoutPlanExercise(WorkoutPlanExercise workoutPlanExercise) {
+        return workoutPlanExerciseRepository.save(workoutPlanExercise);
+    }
+
+    // Update a join row
+    public WorkoutPlanExercise updateWorkoutPlanExercise(Long id, WorkoutPlanExercise updatedWorkoutPlanExercise) {
+        WorkoutPlanExercise existing = getWorkoutPlanExerciseById(id);
+        existing.setWorkoutPlan(updatedWorkoutPlanExercise.getWorkoutPlan());
+        existing.setExercise(updatedWorkoutPlanExercise.getExercise());
+        existing.setOrderIndex(updatedWorkoutPlanExercise.getOrderIndex());
+        existing.setTargetSets(updatedWorkoutPlanExercise.getTargetSets());
+        existing.setTargetReps(updatedWorkoutPlanExercise.getTargetReps());
+        existing.setRestSeconds(updatedWorkoutPlanExercise.getRestSeconds());
+        return workoutPlanExerciseRepository.save(existing);
+    }
+
+    // Delete a join row
+    public void deleteWorkoutPlanExercise(Long id) {
+        WorkoutPlanExercise existing = getWorkoutPlanExerciseById(id);
+        workoutPlanExerciseRepository.delete(existing);
+    }
+
+    // Count exercises in a workout plan
+    public long countByWorkoutPlan(WorkoutPlan workoutPlan) {
+        return workoutPlanExerciseRepository.countByWorkoutPlan(workoutPlan);
+    }
+}
