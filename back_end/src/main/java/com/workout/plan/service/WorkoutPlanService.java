@@ -42,6 +42,11 @@ public class WorkoutPlanService {
         return workoutPlanRepository.findByDifficulty(difficulty);
     }
 
+    // Get active workout plans
+    public List<WorkoutPlan> getActiveWorkoutPlans() {
+        return workoutPlanRepository.findByActiveTrue();
+    }
+
     // Create a new workout plan
     public WorkoutPlan createWorkoutPlan(WorkoutPlan workoutPlan) {
         return workoutPlanRepository.save(workoutPlan);
