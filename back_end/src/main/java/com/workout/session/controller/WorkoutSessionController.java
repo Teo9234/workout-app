@@ -25,7 +25,6 @@ import com.workout.user.service.UserService;
 
 import jakarta.validation.Valid;
 
-// @RestController tells Spring this class handles HTTP requests and returns JSON.
 @RestController
 @RequestMapping("/api/workout-sessions")
 public class WorkoutSessionController {
@@ -34,7 +33,7 @@ public class WorkoutSessionController {
     private final UserService userService;
     private final WorkoutPlanService workoutPlanService;
 
-    // Constructor injection: Spring provides the services automatically.
+    // Constructor injection for services
     public WorkoutSessionController(WorkoutSessionService workoutSessionService, UserService userService,
             WorkoutPlanService workoutPlanService) {
         this.workoutSessionService = workoutSessionService;
@@ -42,28 +41,29 @@ public class WorkoutSessionController {
         this.workoutPlanService = workoutPlanService;
     }
 
-    // GET /api/workout-sessions
-    public List<WorkoutSession> getAllSessions() {
+    // Get all workout sessions
+    @GetMapping
+    public List<WorkoutSession> getAllWorkoutSessions() {
         return workoutSessionService.getAllWorkoutSessions();
     }
 
-    // GET /api/workout-sessions/{id}
+    // Get a workout session by ID
     @GetMapping("/{id}")
-    public WorkoutSession getSessionById(@PathVariable Long id) {
+    public WorkoutSession getWorkoutSessionById(@PathVariable Long id) {
         return workoutSessionService.getWorkoutSessionById(id);
     }
 
-    // GET /api/workout-sessions/user/{userId}
+    // Get all workout sessions for a user
+    // For example, GET /api/workout-sessions/user/123 would return all sessions for
+    // user with ID 123
     @GetMapping("/user/{userId}")
-    public List<WorkoutSession> getSessionsByUserId(@PathVariable Long userId) {
-        User user = userService.getUserById(userId);
-        return workoutSessionService.getByUser(user);
+    public List<WorkoutSession> getWorkoutSessionsByUser(@PathVariable Long userId) {
+        return workoutSessionService.getByUser(userService.getUserById(userId));
     }
 
-    // GET
-    // /api/workout-sessions/user/{userId}/between?startDate=2026-03-01&endDate=2026-03-31
+    // Get workout sessions for a user between two dates
     @GetMapping("/user/{userId}/between")
-    public List<WorkoutSession> getSessionsByUserIdAndDateRange(
+    public List<WorkoutSession> getWorkoutSessionsByUserAndDateRange(
             @PathVariable Long userId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
@@ -71,29 +71,22 @@ public class WorkoutSessionController {
         return workoutSessionService.getByUserAndDateRange(user, startDate, endDate);
     }
 
-    // GET /api/workout-sessions/user/{userId}/this-month
+    // Get workout sessions for a user in the current month (useful for stats)
     @GetMapping("/user/{userId}/this-month")
-    public List<WorkoutSession> getByUserThisMonth(@PathVariable Long userId) {
-        User user = userService.getUserById(userId);
-        return workoutSessionService.getByUserThisMonth(user);
+    public List<WorkoutSession> getWorkoutSessionsByUserThisMonth(@PathVariable Long userId) {
+        return workoutSessionService.getByUserThisMonth(userService.getUserById(userId));
     }
 
-    // GET /api/workout-sessions/plan/{planId}
-    @GetMapping("/plan/{planId}")
-    public List<WorkoutSession> getSessionsByPlanId(@PathVariable Long planId) {
-        WorkoutPlan plan = workoutPlanService.getWorkoutPlanById(planId);
-        return workoutSessionService.getByWorkoutPlan(plan);
-    }
-
-    // POST /api/workout-sessions
+    // Create a new workout session. Note: No {userId} in the path because the user
+    // is included in the request body.
     @PostMapping
     public ResponseEntity<WorkoutSession> createWorkoutSession(@Valid @RequestBody WorkoutSession workoutSession) {
         resolveReferences(workoutSession);
-        WorkoutSession created = workoutSessionService.createWorkoutSession(workoutSession);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+        WorkoutSession createdSession = workoutSessionService.createWorkoutSession(workoutSession);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdSession);
     }
 
-    // PUT /api/workout-sessions/{id}
+    // Update an existing workout session by ID
     @PutMapping("/{id}")
     public WorkoutSession updateWorkoutSession(@PathVariable Long id,
             @Valid @RequestBody WorkoutSession workoutSession) {
@@ -101,15 +94,13 @@ public class WorkoutSessionController {
         return workoutSessionService.updateWorkoutSession(id, workoutSession);
     }
 
-    // DELETE /api/workout-sessions/{id}
+    // Delete a workout session by ID
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteWorkoutSession(@PathVariable Long id) {
         workoutSessionService.deleteWorkoutSession(id);
         return ResponseEntity.noContent().build();
     }
 
-    // Ensure related entities exist, and attach managed entities before
-    // save/update.
     private void resolveReferences(WorkoutSession workoutSession) {
         if (workoutSession.getUser() == null || workoutSession.getUser().getId() == null) {
             throw new IllegalArgumentException("user.id is required");
@@ -124,8 +115,9 @@ public class WorkoutSessionController {
             if (planId == null) {
                 throw new IllegalArgumentException("workoutPlan.id is required when workoutPlan is provided");
             }
-            WorkoutPlan plan = workoutPlanService.getWorkoutPlanById(planId);
-            workoutSession.setWorkoutPlan(plan);
+
+            WorkoutPlan workoutPlan = workoutPlanService.getWorkoutPlanById(planId);
+            workoutSession.setWorkoutPlan(workoutPlan);
         }
     }
 }
