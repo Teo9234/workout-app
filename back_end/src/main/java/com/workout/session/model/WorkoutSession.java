@@ -74,6 +74,7 @@ public class WorkoutSession {
         this.workoutPlan = workoutPlan;
     }
 
+    // Lifecycle callbacks to set timestamps
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();

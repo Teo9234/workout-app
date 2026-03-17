@@ -25,6 +25,7 @@ import com.workout.user.service.UserService;
 
 import jakarta.validation.Valid;
 
+// REST controller for managing workout sessions. Provides endpoints for CRUD operations and querying sessions by user and date range.
 @RestController
 @RequestMapping("/api/workout-sessions")
 public class WorkoutSessionController {
