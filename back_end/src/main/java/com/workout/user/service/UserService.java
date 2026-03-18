@@ -2,6 +2,7 @@ package com.workout.user.service;
 
 import java.util.List;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.workout.core.exceptions.ResourceNotFoundException;
@@ -12,10 +13,12 @@ import com.workout.user.repository.UserRepository;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     // Constructor injection: Spring provides UserRepository automatically.
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     // Get all users
@@ -49,6 +52,7 @@ public class UserService {
         if (userRepository.existsByEmail(user.getEmail())) {
             throw new IllegalArgumentException("Email already exists: " + user.getEmail());
         }
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
 
@@ -69,7 +73,7 @@ public class UserService {
 
         existing.setUsername(updatedUser.getUsername());
         existing.setEmail(updatedUser.getEmail());
-        existing.setPassword(updatedUser.getPassword());
+        existing.setPassword(passwordEncoder.encode(updatedUser.getPassword()));
         existing.setFirstName(updatedUser.getFirstName());
         existing.setLastName(updatedUser.getLastName());
         return userRepository.save(existing);

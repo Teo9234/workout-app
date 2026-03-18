@@ -16,7 +16,9 @@ spring:
       hibernate:
         format_sql: true
 
-  security:
-    user:
-      name: admin
-      password: admin
+security:
+  jwt:
+    # Change this in a production environment!
+    secret: ${JWT_SECRET:bXlfc3VwZXJfc2VjcmV0X2tleV9tdXN0X2JlX2F0X2xlYXN0XzMyX2J5dGVzX2xvbmdfMTIzNDU2}
+    # 12 Hours in milliseconds
+    expiration-ms: ${JWT_EXPIRATION_MS:43200000}

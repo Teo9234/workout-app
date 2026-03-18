@@ -1,5 +1,7 @@
 package com.workout.user.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -21,7 +23,7 @@ import jakarta.persistence.PreUpdate;
 @Entity
 @Table(name = "users")
 public class User {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -36,6 +38,7 @@ public class User {
     private String email;
 
     @NotBlank(message = "Password cannot be blank")
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     @Column(name = "password", nullable = false)
     private String password;
 
@@ -70,7 +73,7 @@ public class User {
     }
 
     @PreUpdate
-    protected void onUpdate() { 
+    protected void onUpdate() {
         this.updatedAt = java.time.LocalDateTime.now();
     }
 }
