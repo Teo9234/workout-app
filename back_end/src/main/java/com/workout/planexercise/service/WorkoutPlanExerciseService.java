@@ -75,14 +75,19 @@ public class WorkoutPlanExerciseService {
     }
 
     // Update a join row
-    public WorkoutPlanExercise updateWorkoutPlanExercise(Long id, WorkoutPlanExercise updatedWorkoutPlanExercise) {
+    public WorkoutPlanExercise updateWorkoutPlanExercise(Long id, Long planId, Long exerciseId,
+            CreateWorkoutPlanExerciseRequest request) {
         WorkoutPlanExercise existing = getWorkoutPlanExerciseById(id);
-        existing.setWorkoutPlan(updatedWorkoutPlanExercise.getWorkoutPlan());
-        existing.setExercise(updatedWorkoutPlanExercise.getExercise());
-        existing.setOrderIndex(updatedWorkoutPlanExercise.getOrderIndex());
-        existing.setTargetSets(updatedWorkoutPlanExercise.getTargetSets());
-        existing.setTargetReps(updatedWorkoutPlanExercise.getTargetReps());
-        existing.setRestSeconds(updatedWorkoutPlanExercise.getRestSeconds());
+
+        WorkoutPlan workoutPlan = workoutPlanService.getWorkoutPlanById(planId);
+        Exercise exercise = exerciseService.getExerciseById(exerciseId);
+
+        existing.setWorkoutPlan(workoutPlan);
+        existing.setExercise(exercise);
+        existing.setOrderIndex(request.orderIndex());
+        existing.setTargetSets(request.targetSets());
+        existing.setTargetReps(request.targetReps());
+        existing.setRestSeconds(request.restSeconds());
         return workoutPlanExerciseRepository.save(existing);
     }
 

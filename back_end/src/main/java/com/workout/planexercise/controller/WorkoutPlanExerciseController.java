@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.workout.exercise.service.ExerciseService;
 import com.workout.plan.model.WorkoutPlan;
 import com.workout.plan.service.WorkoutPlanService;
 import com.workout.planexercise.dto.CreateWorkoutPlanExerciseRequest;
@@ -28,14 +27,12 @@ public class WorkoutPlanExerciseController {
 
     private final WorkoutPlanExerciseService planExerciseService;
     private final WorkoutPlanService workoutPlanService;
-    private final ExerciseService exerciseService;
 
     // Constructor injection
     public WorkoutPlanExerciseController(WorkoutPlanExerciseService planExerciseService,
-            WorkoutPlanService workoutPlanService, ExerciseService exerciseService) {
+            WorkoutPlanService workoutPlanService) {
         this.planExerciseService = planExerciseService;
         this.workoutPlanService = workoutPlanService;
-        this.exerciseService = exerciseService;
     }
 
     // Get all plan-exercise associations
@@ -73,13 +70,8 @@ public class WorkoutPlanExerciseController {
             @PathVariable Long planId,
             @PathVariable Long exerciseId,
             @PathVariable Long id,
-            @RequestBody WorkoutPlanExercise workoutPlanExercise) {
-
-        WorkoutPlan workoutPlan = workoutPlanService.getWorkoutPlanById(planId);
-        workoutPlanExercise.setWorkoutPlan(workoutPlan);
-        workoutPlanExercise.setExercise(exerciseService.getExerciseById(exerciseId));
-
-        return planExerciseService.updateWorkoutPlanExercise(id, workoutPlanExercise);
+            @Valid @RequestBody CreateWorkoutPlanExerciseRequest request) {
+        return planExerciseService.updateWorkoutPlanExercise(id, planId, exerciseId, request);
     }
 
     // Delete a plan-exercise association by ID
