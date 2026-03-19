@@ -16,8 +16,11 @@ import org.springframework.web.bind.annotation.RestController;
 import com.workout.exercise.service.ExerciseService;
 import com.workout.plan.model.WorkoutPlan;
 import com.workout.plan.service.WorkoutPlanService;
+import com.workout.planexercise.dto.CreateWorkoutPlanExerciseRequest;
 import com.workout.planexercise.model.WorkoutPlanExercise;
 import com.workout.planexercise.service.WorkoutPlanExerciseService;
+
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/plan-exercises")
@@ -59,13 +62,8 @@ public class WorkoutPlanExerciseController {
     public ResponseEntity<WorkoutPlanExercise> addExerciseToPlan(
             @PathVariable Long planId,
             @PathVariable Long exerciseId,
-            @RequestBody WorkoutPlanExercise workoutPlanExercise) {
-
-        WorkoutPlan workoutPlan = workoutPlanService.getWorkoutPlanById(planId);
-        workoutPlanExercise.setWorkoutPlan(workoutPlan);
-        workoutPlanExercise.setExercise(exerciseService.getExerciseById(exerciseId));
-
-        WorkoutPlanExercise created = planExerciseService.createWorkoutPlanExercise(workoutPlanExercise);
+            @Valid @RequestBody CreateWorkoutPlanExerciseRequest request) {
+        WorkoutPlanExercise created = planExerciseService.createWorkoutPlanExercise(planId, exerciseId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 

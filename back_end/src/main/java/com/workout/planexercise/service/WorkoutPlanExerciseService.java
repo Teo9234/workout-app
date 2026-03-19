@@ -6,7 +6,10 @@ import org.springframework.stereotype.Service;
 
 import com.workout.core.exceptions.ResourceNotFoundException;
 import com.workout.exercise.model.Exercise;
+import com.workout.exercise.service.ExerciseService;
 import com.workout.plan.model.WorkoutPlan;
+import com.workout.plan.service.WorkoutPlanService;
+import com.workout.planexercise.dto.CreateWorkoutPlanExerciseRequest;
 import com.workout.planexercise.model.WorkoutPlanExercise;
 import com.workout.planexercise.repository.WorkoutPlanExerciseRepository;
 
@@ -14,11 +17,16 @@ import com.workout.planexercise.repository.WorkoutPlanExerciseRepository;
 public class WorkoutPlanExerciseService {
 
     private final WorkoutPlanExerciseRepository workoutPlanExerciseRepository;
+    private final WorkoutPlanService workoutPlanService;
+    private final ExerciseService exerciseService;
 
-    // Constructor injection: Spring provides WorkoutPlanExerciseRepository
-    // automatically.
-    public WorkoutPlanExerciseService(WorkoutPlanExerciseRepository workoutPlanExerciseRepository) {
+    // Constructor injection: Spring provides dependencies automatically.
+    public WorkoutPlanExerciseService(WorkoutPlanExerciseRepository workoutPlanExerciseRepository,
+            WorkoutPlanService workoutPlanService,
+            ExerciseService exerciseService) {
         this.workoutPlanExerciseRepository = workoutPlanExerciseRepository;
+        this.workoutPlanService = workoutPlanService;
+        this.exerciseService = exerciseService;
     }
 
     // Get all join rows
@@ -49,8 +57,20 @@ public class WorkoutPlanExerciseService {
         return result;
     }
 
-    // Create a join row
-    public WorkoutPlanExercise createWorkoutPlanExercise(WorkoutPlanExercise workoutPlanExercise) {
+    // Create a join row for POST /plan/{planId}/exercise/{exerciseId}
+    public WorkoutPlanExercise createWorkoutPlanExercise(Long planId, Long exerciseId,
+            CreateWorkoutPlanExerciseRequest request) {
+        WorkoutPlan workoutPlan = workoutPlanService.getWorkoutPlanById(planId);
+        Exercise exercise = exerciseService.getExerciseById(exerciseId);
+
+        WorkoutPlanExercise workoutPlanExercise = new WorkoutPlanExercise(
+                workoutPlan,
+                exercise,
+                request.orderIndex(),
+                request.targetSets(),
+                request.targetReps(),
+                request.restSeconds());
+
         return workoutPlanExerciseRepository.save(workoutPlanExercise);
     }
 
