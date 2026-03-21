@@ -63,6 +63,11 @@ public class WorkoutPlanExerciseService {
         WorkoutPlan workoutPlan = workoutPlanService.getWorkoutPlanById(planId);
         Exercise exercise = exerciseService.getExerciseById(exerciseId);
 
+        if (workoutPlanExerciseRepository.existsByWorkoutPlanAndOrderIndex(workoutPlan, request.orderIndex())) {
+            throw new IllegalArgumentException(
+                    "Order index " + request.orderIndex() + " is already used in workout plan " + workoutPlan.getId());
+        }
+
         WorkoutPlanExercise workoutPlanExercise = new WorkoutPlanExercise(
                 workoutPlan,
                 exercise,
@@ -81,6 +86,14 @@ public class WorkoutPlanExerciseService {
 
         WorkoutPlan workoutPlan = workoutPlanService.getWorkoutPlanById(planId);
         Exercise exercise = exerciseService.getExerciseById(exerciseId);
+
+        if (workoutPlanExerciseRepository.existsByWorkoutPlanAndOrderIndexAndIdNot(
+                workoutPlan,
+                request.orderIndex(),
+                id)) {
+            throw new IllegalArgumentException(
+                    "Order index " + request.orderIndex() + " is already used in workout plan " + workoutPlan.getId());
+        }
 
         existing.setWorkoutPlan(workoutPlan);
         existing.setExercise(exercise);

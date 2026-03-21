@@ -16,6 +16,12 @@ public interface WorkoutPlanExerciseRepository extends JpaRepository<WorkoutPlan
     // Find a specific exercise in a workout plan
     WorkoutPlanExercise findByWorkoutPlanAndExercise(WorkoutPlan workoutPlan, Exercise exercise);
 
+    // Check order index uniqueness inside a workout plan
+    boolean existsByWorkoutPlanAndOrderIndex(WorkoutPlan workoutPlan, Integer orderIndex);
+
+    // Check order index uniqueness inside a workout plan excluding current row
+    boolean existsByWorkoutPlanAndOrderIndexAndIdNot(WorkoutPlan workoutPlan, Integer orderIndex, Long id);
+
     // Count exercises in a workout plan
     long countByWorkoutPlan(WorkoutPlan workoutPlan);
 }

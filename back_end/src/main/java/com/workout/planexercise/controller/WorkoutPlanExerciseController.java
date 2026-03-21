@@ -1,6 +1,7 @@
 package com.workout.planexercise.controller;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.workout.plan.model.WorkoutPlan;
 import com.workout.plan.service.WorkoutPlanService;
 import com.workout.planexercise.dto.CreateWorkoutPlanExerciseRequest;
+import com.workout.planexercise.dto.WorkoutPlanExerciseResponse;
 import com.workout.planexercise.model.WorkoutPlanExercise;
 import com.workout.planexercise.service.WorkoutPlanExerciseService;
 
@@ -37,41 +39,88 @@ public class WorkoutPlanExerciseController {
 
     // Get all plan-exercise associations
     @GetMapping
-    public List<WorkoutPlanExercise> getAllPlanExercises() {
-        return planExerciseService.getAllWorkoutPlanExercises();
+    public List<WorkoutPlanExerciseResponse> getAllPlanExercises() {
+        return planExerciseService.getAllWorkoutPlanExercises().stream()
+                .map(e -> new WorkoutPlanExerciseResponse(
+                        e.getId(),
+                        e.getOrderIndex(),
+                        e.getTargetSets(),
+                        e.getTargetReps(),
+                        e.getRestSeconds(),
+                        e.getExercise().getName(),
+                        e.getWorkoutPlan().getName()))
+                .collect(Collectors.toList());
     }
 
     // Get a specific plan-exercise association by ID
     @GetMapping("/{id}")
-    public WorkoutPlanExercise getPlanExerciseById(@PathVariable Long id) {
-        return planExerciseService.getWorkoutPlanExerciseById(id);
+    public WorkoutPlanExerciseResponse getPlanExerciseById(@PathVariable Long id) {
+        WorkoutPlanExercise e = planExerciseService.getWorkoutPlanExerciseById(id);
+        return new WorkoutPlanExerciseResponse(
+                e.getId(),
+                e.getOrderIndex(),
+                e.getTargetSets(),
+                e.getTargetReps(),
+                e.getRestSeconds(),
+                e.getExercise().getName(),
+                e.getWorkoutPlan().getName());
     }
 
     // Get all exercises for a specific workout plan
     @GetMapping("/plan/{planId}")
-    public List<WorkoutPlanExercise> getExercisesByPlanId(@PathVariable Long planId) {
+    public List<WorkoutPlanExerciseResponse> getExercisesByPlanId(@PathVariable Long planId) {
         WorkoutPlan workoutPlan = workoutPlanService.getWorkoutPlanById(planId);
-        return planExerciseService.getByWorkoutPlan(workoutPlan);
+        return planExerciseService.getByWorkoutPlan(workoutPlan).stream()
+                .map(e -> new WorkoutPlanExerciseResponse(
+                        e.getId(),
+                        e.getOrderIndex(),
+                        e.getTargetSets(),
+                        e.getTargetReps(),
+                        e.getRestSeconds(),
+                        e.getExercise().getName(),
+                        e.getWorkoutPlan().getName()))
+                .collect(Collectors.toList());
     }
 
     // Add an exercise to a workout plan
     @PostMapping("/plan/{planId}/exercise/{exerciseId}")
-    public ResponseEntity<WorkoutPlanExercise> addExerciseToPlan(
+    public ResponseEntity<WorkoutPlanExerciseResponse> addExerciseToPlan(
             @PathVariable Long planId,
             @PathVariable Long exerciseId,
             @Valid @RequestBody CreateWorkoutPlanExerciseRequest request) {
         WorkoutPlanExercise created = planExerciseService.createWorkoutPlanExercise(planId, exerciseId, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+
+        // Map entity to response DTO
+        WorkoutPlanExerciseResponse response = new WorkoutPlanExerciseResponse(
+                created.getId(),
+                created.getOrderIndex(),
+                created.getTargetSets(),
+                created.getTargetReps(),
+                created.getRestSeconds(),
+                created.getExercise().getName(),
+                created.getWorkoutPlan().getName());
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     // Update an existing plan-exercise association
     @PutMapping("/plan/{planId}/exercise/{exerciseId}/{id}")
-    public WorkoutPlanExercise updatePlanExercise(
+    public WorkoutPlanExerciseResponse updatePlanExercise(
             @PathVariable Long planId,
             @PathVariable Long exerciseId,
             @PathVariable Long id,
             @Valid @RequestBody CreateWorkoutPlanExerciseRequest request) {
-        return planExerciseService.updateWorkoutPlanExercise(id, planId, exerciseId, request);
+        WorkoutPlanExercise updated = planExerciseService.updateWorkoutPlanExercise(id, planId, exerciseId, request);
+
+        // Map entity to response DTO
+        return new WorkoutPlanExerciseResponse(
+                updated.getId(),
+                updated.getOrderIndex(),
+                updated.getTargetSets(),
+                updated.getTargetReps(),
+                updated.getRestSeconds(),
+                updated.getExercise().getName(),
+                updated.getWorkoutPlan().getName());
     }
 
     // Delete a plan-exercise association by ID
