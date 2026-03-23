@@ -61,6 +61,7 @@ public class WorkoutPlanService {
         existing.setPlanType(updatedWorkoutPlan.getPlanType());
         existing.setDifficulty(updatedWorkoutPlan.getDifficulty());
         existing.setDescription(updatedWorkoutPlan.getDescription());
+        existing.setActive(updatedWorkoutPlan.isActive());
         return workoutPlanRepository.save(existing);
     }
 
