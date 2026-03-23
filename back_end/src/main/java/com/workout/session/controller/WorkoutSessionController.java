@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.workout.plan.model.WorkoutPlan;
 import com.workout.plan.service.WorkoutPlanService;
+import com.workout.session.dto.CreateWorkoutSessionRequest;
+import com.workout.session.dto.WorkoutSessionResponse;
 import com.workout.session.model.WorkoutSession;
 import com.workout.session.service.WorkoutSessionService;
 import com.workout.user.model.User;
@@ -44,55 +46,68 @@ public class WorkoutSessionController {
 
     // Get all workout sessions
     @GetMapping
-    public List<WorkoutSession> getAllWorkoutSessions() {
-        return workoutSessionService.getAllWorkoutSessions();
+    public List<WorkoutSessionResponse> getAllWorkoutSessions() {
+        return workoutSessionService.getAllWorkoutSessions().stream()
+                .map(this::mapToResponse)
+                .toList();
     }
 
     // Get a workout session by ID
     @GetMapping("/{id}")
-    public WorkoutSession getWorkoutSessionById(@PathVariable Long id) {
-        return workoutSessionService.getWorkoutSessionById(id);
+    public WorkoutSessionResponse getWorkoutSessionById(@PathVariable Long id) {
+        WorkoutSession workoutSession = workoutSessionService.getWorkoutSessionById(id);
+        return mapToResponse(workoutSession);
     }
 
     // Get all workout sessions for a user
     // For example, GET /api/workout-sessions/user/123 would return all sessions for
     // user with ID 123
     @GetMapping("/user/{userId}")
-    public List<WorkoutSession> getWorkoutSessionsByUser(@PathVariable Long userId) {
-        return workoutSessionService.getByUser(userService.getUserById(userId));
+    public List<WorkoutSessionResponse> getWorkoutSessionsByUser(@PathVariable Long userId) {
+        return workoutSessionService.getByUser(userService.getUserById(userId)).stream()
+                .map(this::mapToResponse)
+                .toList();
     }
 
     // Get workout sessions for a user between two dates
     @GetMapping("/user/{userId}/between")
-    public List<WorkoutSession> getWorkoutSessionsByUserAndDateRange(
+    public List<WorkoutSessionResponse> getWorkoutSessionsByUserAndDateRange(
             @PathVariable Long userId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         User user = userService.getUserById(userId);
-        return workoutSessionService.getByUserAndDateRange(user, startDate, endDate);
+        return workoutSessionService.getByUserAndDateRange(user, startDate, endDate).stream()
+                .map(this::mapToResponse)
+                .toList();
     }
 
     // Get workout sessions for a user in the current month (useful for stats)
     @GetMapping("/user/{userId}/this-month")
-    public List<WorkoutSession> getWorkoutSessionsByUserThisMonth(@PathVariable Long userId) {
-        return workoutSessionService.getByUserThisMonth(userService.getUserById(userId));
+    public List<WorkoutSessionResponse> getWorkoutSessionsByUserThisMonth(@PathVariable Long userId) {
+        return workoutSessionService.getByUserThisMonth(userService.getUserById(userId)).stream()
+                .map(this::mapToResponse)
+                .toList();
     }
 
     // Create a new workout session. Note: No {userId} in the path because the user
     // is included in the request body.
     @PostMapping
-    public ResponseEntity<WorkoutSession> createWorkoutSession(@Valid @RequestBody WorkoutSession workoutSession) {
-        resolveReferences(workoutSession);
+    public ResponseEntity<WorkoutSessionResponse> createWorkoutSession(
+            @Valid @RequestBody CreateWorkoutSessionRequest workoutSessionRequest) {
+        WorkoutSession workoutSession = mapToEntity(workoutSessionRequest);
         WorkoutSession createdSession = workoutSessionService.createWorkoutSession(workoutSession);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdSession);
+        WorkoutSessionResponse response = mapToResponse(createdSession);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     // Update an existing workout session by ID
     @PutMapping("/{id}")
-    public WorkoutSession updateWorkoutSession(@PathVariable Long id,
-            @Valid @RequestBody WorkoutSession workoutSession) {
-        resolveReferences(workoutSession);
-        return workoutSessionService.updateWorkoutSession(id, workoutSession);
+    public ResponseEntity<WorkoutSessionResponse> updateWorkoutSession(@PathVariable Long id,
+            @Valid @RequestBody CreateWorkoutSessionRequest workoutSessionRequest) {
+        WorkoutSession workoutSession = mapToEntity(workoutSessionRequest);
+        WorkoutSession updatedSession = workoutSessionService.updateWorkoutSession(id, workoutSession);
+        WorkoutSessionResponse response = mapToResponse(updatedSession);
+        return ResponseEntity.ok(response);
     }
 
     // Delete a workout session by ID
@@ -102,23 +117,32 @@ public class WorkoutSessionController {
         return ResponseEntity.noContent().build();
     }
 
-    private void resolveReferences(WorkoutSession workoutSession) {
-        if (workoutSession.getUser() == null || workoutSession.getUser().getId() == null) {
-            throw new IllegalArgumentException("user.id is required");
+    private WorkoutSession mapToEntity(CreateWorkoutSessionRequest request) {
+        User user = userService.getUserById(request.userId());
+
+        WorkoutSession workoutSession;
+        if (request.workoutPlanId() != null) {
+            WorkoutPlan workoutPlan = workoutPlanService.getWorkoutPlanById(request.workoutPlanId());
+            workoutSession = new WorkoutSession(user, request.sessionDate(), workoutPlan);
+        } else {
+            workoutSession = new WorkoutSession(user, request.sessionDate());
         }
 
-        Long userId = workoutSession.getUser().getId();
-        User user = userService.getUserById(userId);
-        workoutSession.setUser(user);
+        workoutSession.setStartTime(request.startTime());
+        workoutSession.setEndTime(request.endTime());
+        workoutSession.setNotes(request.notes());
 
-        if (workoutSession.getWorkoutPlan() != null) {
-            Long planId = workoutSession.getWorkoutPlan().getId();
-            if (planId == null) {
-                throw new IllegalArgumentException("workoutPlan.id is required when workoutPlan is provided");
-            }
+        return workoutSession;
+    }
 
-            WorkoutPlan workoutPlan = workoutPlanService.getWorkoutPlanById(planId);
-            workoutSession.setWorkoutPlan(workoutPlan);
-        }
+    private WorkoutSessionResponse mapToResponse(WorkoutSession workoutSession) {
+        return new WorkoutSessionResponse(
+                workoutSession.getId(),
+                workoutSession.getUser().getId(),
+                workoutSession.getSessionDate(),
+                workoutSession.getStartTime(),
+                workoutSession.getEndTime(),
+                workoutSession.getNotes(),
+                workoutSession.getWorkoutPlan() != null ? workoutSession.getWorkoutPlan().getId() : null);
     }
 }
