@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.workout.user.dto.CreateWorkoutUserRequest;
+import com.workout.user.dto.WorkoutUserResponse;
 import com.workout.user.model.User;
 import com.workout.user.service.UserService;
 
@@ -31,27 +33,35 @@ public class UserController {
 
     // Get all users
     @GetMapping
-    public List<User> getAllUsers() {
-        return userService.getAllUsers();
+    public List<WorkoutUserResponse> getAllUsers() {
+        return userService.getAllUsers().stream()
+                .map(this::mapToResponse)
+                .toList();
     }
 
     // Get a user by ID
     @GetMapping("/{id}")
-    public User getUserById(@PathVariable Long id) {
-        return userService.getUserById(id);
+    public WorkoutUserResponse getUserById(@PathVariable Long id) {
+        User user = userService.getUserById(id);
+        return mapToResponse(user);
     }
 
     // Create a new user
     @PostMapping
-    public ResponseEntity<User> createUser(@Valid @RequestBody User user) {
+    public ResponseEntity<WorkoutUserResponse> createUser(
+            @Valid @RequestBody CreateWorkoutUserRequest request) {
+        User user = mapToEntity(request);
         User createdUser = userService.createUser(user);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
+        return ResponseEntity.status(HttpStatus.CREATED).body(mapToResponse(createdUser));
     }
 
     // Update an existing user
     @PutMapping("/{id}")
-    public User updateUser(@PathVariable Long id, @Valid @RequestBody User user) {
-        return userService.updateUser(id, user);
+    public ResponseEntity<WorkoutUserResponse> updateUser(
+            @PathVariable Long id, @Valid @RequestBody CreateWorkoutUserRequest request) {
+        User user = mapToEntity(request);
+        User updatedUser = userService.updateUser(id, user);
+        return ResponseEntity.ok(mapToResponse(updatedUser));
     }
 
     // Delete a user by ID
@@ -59,5 +69,29 @@ public class UserController {
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
+    }
+
+    // Helper method to convert CreateWorkoutUserRequest DTO to User entity
+    private User mapToEntity(CreateWorkoutUserRequest request) {
+        // only update the completed status if it's provided in the request
+        if (request.password() == null || request.password().isBlank()) {
+            throw new IllegalArgumentException("Password cannot be blank");
+        }
+        return new User(
+                request.username(),
+                request.email(),
+                request.password(),
+                request.firstName(),
+                request.lastName());
+
+    }
+
+    // Helper method to convert User entity to WorkoutUserResponse DTO
+    private WorkoutUserResponse mapToResponse(User user) {
+        return new WorkoutUserResponse(
+                user.getUsername(),
+                user.getEmail(),
+                user.getFirstName(),
+                user.getLastName());
     }
 }
