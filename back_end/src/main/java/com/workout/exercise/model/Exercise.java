@@ -43,7 +43,7 @@ public class Exercise {
 
     @NotNull(message = "Equipment cannot be null")
     @Enumerated(EnumType.STRING)
-    @Column(name = "equipment", nullable = false, length = 20)
+    @Column(name = "equipment", nullable = false, length = 50)
     private Equipment equipment;
 
     @Size(max = 500, message = "Description must not exceed 500 characters")

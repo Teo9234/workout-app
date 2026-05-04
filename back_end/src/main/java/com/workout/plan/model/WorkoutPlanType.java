@@ -9,5 +9,6 @@ public enum WorkoutPlanType {
     FULL_BODY,
     CARDIO,
     STRETCHING,
-    CUSTOM
+    CUSTOM,
+    BODYWEIGHT;
 }

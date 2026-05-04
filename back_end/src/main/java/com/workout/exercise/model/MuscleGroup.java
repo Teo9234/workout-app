@@ -13,5 +13,6 @@ public enum MuscleGroup {
     GLUTES,
     CALVES,
     ABS,
-    CARDIO;
+    CARDIO,
+    BODYWEIGHT;
 }
