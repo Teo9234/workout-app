@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { AuthService } from '../../shared/auth.service';
 
 @Component({
   selector: 'app-register-page',
@@ -38,7 +39,9 @@ import { RouterLink } from '@angular/router';
             <input type="text" name="lastName" [(ngModel)]="form.lastName" required />
           </label>
 
-          <button type="submit" [disabled]="registerForm.invalid">Register</button>
+          <button type="submit" [disabled]="registerForm.invalid || loading">
+            {{ loading ? 'Creating account…' : 'Register' }}
+          </button>
         </form>
 
         <p class="switch-link">
@@ -139,8 +142,26 @@ export class RegisterPageComponent {
   };
 
   protected message = '';
+  protected loading = false;
+
+  constructor(private auth: AuthService, private router: Router) {}
 
   protected onSubmit(): void {
-    this.message = `Ready to register ${this.form.username}. Next we will send this data to the backend.`;
+    this.loading = true;
+    this.message = '';
+
+    this.auth.register(
+      this.form.username,
+      this.form.email,
+      this.form.password,
+      this.form.firstName,
+      this.form.lastName,
+    ).subscribe({
+      next: () => this.router.navigate(['/app']),
+      error: (err) => {
+        this.loading = false;
+        this.message = err.error?.message ?? 'Something went wrong. Is the server running?';
+      },
+    });
   }
 }

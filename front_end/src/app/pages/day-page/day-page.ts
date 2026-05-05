@@ -56,17 +56,26 @@ type LoggedExercise = {
           <h3>Workout plan</h3>
 
           <label>
+            <span>Plan type</span>
+            <select [(ngModel)]="selectedPlanType" name="selectedPlanType" (ngModelChange)="onPlanTypeChange()">
+              @for (planType of availablePlanTypes; track planType) {
+                <option [value]="planType">{{ formatLabel(planType) }}</option>
+              }
+            </select>
+          </label>
+
+          <label>
             <span>Plan</span>
             <select [(ngModel)]="selectedPlanName" name="selectedPlanName" (ngModelChange)="onPlanChange()">
-              @for (plan of workoutPlans; track plan.name) {
+              @for (plan of plansForSelectedType; track plan.name) {
                 <option [value]="plan.name">{{ plan.name }}</option>
               }
             </select>
           </label>
 
           <div class="plan-meta">
-            <p><strong>Type:</strong> {{ selectedPlan.planType }}</p>
-            <p><strong>Difficulty:</strong> {{ selectedPlan.difficulty }}</p>
+            <p><strong>Type:</strong> {{ formatLabel(selectedPlan.planType) }}</p>
+            <p><strong>Difficulty:</strong> {{ formatLabel(selectedPlan.difficulty) }}</p>
             <p><strong>Description:</strong> {{ selectedPlan.description }}</p>
             <p><strong>Planned exercises:</strong> {{ selectedPlan.exercises.length }}</p>
           </div>
@@ -98,7 +107,7 @@ type LoggedExercise = {
               (ngModelChange)="onMuscleGroupChange()"
             >
               @for (muscleGroup of availableMuscleGroups; track muscleGroup) {
-                <option [value]="muscleGroup">{{ muscleGroup }}</option>
+                <option [value]="muscleGroup">{{ formatLabel(muscleGroup) }}</option>
               }
             </select>
           </label>
@@ -110,8 +119,8 @@ type LoggedExercise = {
               name="selectedEquipment"
               (ngModelChange)="onEquipmentChange()"
             >
-              @for (equipment of availableEquipmentOptions; track equipment) {
-                <option [value]="equipment">{{ equipment }}</option>
+                @for (equipmentOption of equipmentDisplayOptions; track equipmentOption.value) {
+                <option [value]="equipmentOption.value">{{ equipmentOption.label }}</option>
               }
             </select>
           </label>
@@ -126,8 +135,8 @@ type LoggedExercise = {
           </label>
 
           <div class="exercise-meta">
-            <p><strong>Muscle group:</strong> {{ selectedExercise.muscleGroup }}</p>
-            <p><strong>Equipment:</strong> {{ selectedExercise.equipment }}</p>
+            <p><strong>Muscle group:</strong> {{ formatLabel(selectedExercise.muscleGroup) }}</p>
+            <p><strong>Equipment:</strong> {{ formatLabel(selectedExercise.equipment) }}</p>
           </div>
 
           <button type="button" (click)="addExercise()">Add to this day</button>
@@ -162,7 +171,7 @@ type LoggedExercise = {
                 <div class="entry-top">
                   <div>
                     <h4>{{ entry.name }}</h4>
-                    <p class="entry-meta">{{ entry.muscleGroup }} · {{ entry.equipment }}</p>
+                    <p class="entry-meta">{{ formatLabel(entry.muscleGroup) }} · {{ formatLabel(entry.equipment) }}</p>
                   </div>
                   <button type="button" class="delete-button" (click)="removeExercise(entry.id)">
                     Delete
@@ -515,7 +524,7 @@ export class DayPageComponent {
         { name: 'Cable Pullover', muscleGroup: 'BACK', equipment: 'CABLE_CROSSOVER' },
         { name: 'Straight Arm Pulldown', muscleGroup: 'BACK', equipment: 'CABLE_CROSSOVER' },
         { name: 'Inverted Row', muscleGroup: 'BACK', equipment: 'BODYWEIGHT' },
-        
+
         // Hamstring and glute exercises
         { name: 'Barbell Curl', muscleGroup: 'BICEPS', equipment: 'BARBELL' },
         { name: 'EZ Bar Curl', muscleGroup: 'BICEPS', equipment: 'BARBELL' },
@@ -800,12 +809,50 @@ export class DayPageComponent {
       planType: 'LOWER_BODY',
       difficulty: 'INTERMEDIATE',
       exercises: [
+
+        // Quadriceps exercises
         { name: 'Back Squat', muscleGroup: 'QUADRICEPS', equipment: 'BARBELL' },
+        { name: 'Front Squat', muscleGroup: 'QUADRICEPS', equipment: 'BARBELL' },
+        { name: 'Hack Squat', muscleGroup: 'QUADRICEPS', equipment: 'HACK_SQUAT_MACHINE' },
         { name: 'Leg Press', muscleGroup: 'QUADRICEPS', equipment: 'LEG_PRESS' },
+        { name: 'Smith Machine Squat', muscleGroup: 'QUADRICEPS', equipment: 'SMITH_MACHINE' },
+        { name: 'Goblet Squat', muscleGroup: 'QUADRICEPS', equipment: 'DUMBBELL' },
+        { name: 'Bulgarian Split Squat', muscleGroup: 'QUADRICEPS', equipment: 'DUMBBELL' },
+        { name: 'Walking Lunges', muscleGroup: 'QUADRICEPS', equipment: 'DUMBBELL' },
+        { name: 'Leg Extension', muscleGroup: 'QUADRICEPS', equipment: 'LEG_EXTENSION' },
+
+        // Hamstring and glute exercises
         { name: 'Romanian Deadlift', muscleGroup: 'HAMSTRINGS', equipment: 'BARBELL' },
+        { name: 'Stiff Leg Deadlift', muscleGroup: 'HAMSTRINGS', equipment: 'BARBELL' },
+        { name: 'Sumo Deadlift', muscleGroup: 'GLUTES', equipment: 'BARBELL' },
+        { name: 'Good Morning', muscleGroup: 'HAMSTRINGS', equipment: 'BARBELL' },
+        { name: 'Dumbbell Romanian Deadlift', muscleGroup: 'HAMSTRINGS', equipment: 'DUMBBELL' },
+        { name: 'Seated Leg Curl', muscleGroup: 'HAMSTRINGS', equipment: 'LEG_CURL_LYING' },
         { name: 'Lying Leg Curl', muscleGroup: 'HAMSTRINGS', equipment: 'LEG_CURL_LYING' },
-        { name: 'Hip Thrust', muscleGroup: 'GLUTES', equipment: 'BARBELL' },
+        { name: 'Cable Pull Through', muscleGroup: 'GLUTES', equipment: 'CABLE_CROSSOVER' },
+
+        // Glute exercises
+        { name: 'Barbell Hip Thrust', muscleGroup: 'GLUTES', equipment: 'BARBELL' },
+        { name: 'Dumbbell Hip Thrust', muscleGroup: 'GLUTES', equipment: 'DUMBBELL' },
+        { name: 'Glute Bridge', muscleGroup: 'GLUTES', equipment: 'BODYWEIGHT' },
+        { name: 'Smith Machine Hip Thrust', muscleGroup: 'GLUTES', equipment: 'SMITH_MACHINE' },
+        { name: 'Glute Kickback Machine', muscleGroup: 'GLUTES', equipment: 'GLUTE_KICKBACK_MACHINE' },
+        { name: 'Reverse Hyperextension', muscleGroup: 'GLUTES', equipment: 'ROMAN_CHAIR_HYPEREXTENSION_BENCH' },
+
+        // Calf exercises
         { name: 'Standing Calf Raise', muscleGroup: 'CALVES', equipment: 'CALF_RAISE_MACHINE' },
+        { name: 'Seated Calf Raise', muscleGroup: 'CALVES', equipment: 'CALF_RAISE_MACHINE' },
+        { name: 'Leg Press Calf Raise', muscleGroup: 'CALVES', equipment: 'LEG_PRESS' },
+        { name: 'Smith Machine Calf Raise', muscleGroup: 'CALVES', equipment: 'SMITH_MACHINE' },
+        { name: 'Dumbbell Calf Raise', muscleGroup: 'CALVES', equipment: 'DUMBBELL' },
+
+        // Additional leg exercises
+        { name: 'Box Jump', muscleGroup: 'QUADRICEPS', equipment: 'PLYOMETRIC_BOXES' },
+        { name: 'Jump Squat', muscleGroup: 'QUADRICEPS', equipment: 'BODYWEIGHT' },
+        { name: 'Sled Push', muscleGroup: 'QUADRICEPS', equipment: 'SLED' },
+        { name: 'Sled Pull', muscleGroup: 'HAMSTRINGS', equipment: 'SLED' },
+        { name: 'Step-Ups', muscleGroup: 'QUADRICEPS', equipment: 'DUMBBELL' },
+        { name: 'Bodyweight Squat', muscleGroup: 'QUADRICEPS', equipment: 'BODYWEIGHT' }
       ],
     },
     {
@@ -814,12 +861,67 @@ export class DayPageComponent {
       planType: 'FULL_BODY',
       difficulty: 'INTERMEDIATE',
       exercises: [
-        { name: 'Bench Press', muscleGroup: 'CHEST', equipment: 'BARBELL' },
-        { name: 'Lat Pulldown', muscleGroup: 'BACK', equipment: 'LAT_PULLDOWN' },
-        { name: 'Dumbbell Shoulder Press', muscleGroup: 'SHOULDERS', equipment: 'DUMBBELL' },
+
+        // Compound lifts for major muscle groups
         { name: 'Back Squat', muscleGroup: 'QUADRICEPS', equipment: 'BARBELL' },
+        { name: 'Deadlift', muscleGroup: 'BACK', equipment: 'BARBELL' },
         { name: 'Romanian Deadlift', muscleGroup: 'HAMSTRINGS', equipment: 'BARBELL' },
+        { name: 'Bench Press', muscleGroup: 'CHEST', equipment: 'BARBELL' },
+        { name: 'Pull-Up', muscleGroup: 'BACK', equipment: 'BODYWEIGHT' },
+        { name: 'Overhead Press', muscleGroup: 'SHOULDERS', equipment: 'BARBELL' },
+
+        // Additional exercises for variety
+        { name: 'Front Squat', muscleGroup: 'QUADRICEPS', equipment: 'BARBELL' },
+        { name: 'Leg Press', muscleGroup: 'QUADRICEPS', equipment: 'LEG_PRESS' },
+        { name: 'Hack Squat', muscleGroup: 'QUADRICEPS', equipment: 'HACK_SQUAT_MACHINE' },
+
+        // Back exercises
+        { name: 'Barbell Row', muscleGroup: 'BACK', equipment: 'BARBELL' },
+        { name: 'Seated Cable Row', muscleGroup: 'BACK', equipment: 'CABLE_CROSSOVER' },
+        { name: 'Lat Pulldown', muscleGroup: 'BACK', equipment: 'LAT_PULLDOWN' },
+
+        // Chest exercises
+        { name: 'Bench Press', muscleGroup: 'CHEST', equipment: 'BARBELL' },
+        { name: 'Incline Dumbbell Press', muscleGroup: 'CHEST', equipment: 'DUMBBELL' },
+        { name: 'Dumbbell Bench Press', muscleGroup: 'CHEST', equipment: 'DUMBBELL' },
+        { name: 'Cable Chest Press', muscleGroup: 'CHEST', equipment: 'CABLE_CROSSOVER' },
+
+        // Shoulder exercises
+        { name: 'Dumbbell Shoulder Press', muscleGroup: 'SHOULDERS', equipment: 'DUMBBELL' },
+        { name: 'Lateral Raise', muscleGroup: 'SHOULDERS', equipment: 'DUMBBELL' },
+        { name: 'Face Pull', muscleGroup: 'SHOULDERS', equipment: 'CABLE_CROSSOVER' },
+
+        // Arm exercises
+        { name: 'Barbell Curl', muscleGroup: 'BICEPS', equipment: 'BARBELL' },
+        { name: 'Hammer Curl', muscleGroup: 'BICEPS', equipment: 'DUMBBELL' },
+        { name: 'Cable Curl', muscleGroup: 'BICEPS', equipment: 'CABLE_CROSSOVER' },
+
+        // Triceps exercises
+        { name: 'Tricep Pushdown', muscleGroup: 'TRICEPS', equipment: 'CABLE_CROSSOVER' },
+        { name: 'Skullcrusher', muscleGroup: 'TRICEPS', equipment: 'BARBELL' },
+        { name: 'Bench Dips', muscleGroup: 'TRICEPS', equipment: 'BODYWEIGHT' },
+
+        // Forearm exercises
+        { name: 'Wrist Curl', muscleGroup: 'FOREARMS', equipment: 'BARBELL' },
+        { name: 'Reverse Wrist Curl', muscleGroup: 'FOREARMS', equipment: 'DUMBBELL' },
+        { name: 'Farmer’s Walk', muscleGroup: 'FOREARMS', equipment: 'DUMBBELL' },
+        { name: 'Hip Thrust', muscleGroup: 'GLUTES', equipment: 'BARBELL' },
+        { name: 'Glute Bridge', muscleGroup: 'GLUTES', equipment: 'BODYWEIGHT' },
+        { name: 'Cable Pull Through', muscleGroup: 'GLUTES', equipment: 'CABLE_CROSSOVER' },
+
+        // Calf exercises
+        { name: 'Standing Calf Raise', muscleGroup: 'CALVES', equipment: 'CALF_RAISE_MACHINE' },
+        { name: 'Seated Calf Raise', muscleGroup: 'CALVES', equipment: 'CALF_RAISE_MACHINE' },
+
+        // Core exercises
+        { name: 'Hanging Leg Raise', muscleGroup: 'ABS', equipment: 'BODYWEIGHT' },
+        { name: 'Cable Crunch', muscleGroup: 'ABS', equipment: 'CABLE_CROSSOVER' },
         { name: 'Plank', muscleGroup: 'ABS', equipment: 'BODYWEIGHT' },
+
+        // Cardio exercises
+        { name: 'Treadmill Run', muscleGroup: 'CARDIO', equipment: 'TREADMILL' },
+        { name: 'Rowing Machine', muscleGroup: 'CARDIO', equipment: 'ROWING_MACHINE' },
+        { name: 'Jump Rope', muscleGroup: 'CARDIO', equipment: 'BODYWEIGHT' }
       ],
     },
     {
@@ -828,11 +930,56 @@ export class DayPageComponent {
       planType: 'STRETCHING',
       difficulty: 'BEGINNER',
       exercises: [
-        { name: 'Foam Roll Upper Back', muscleGroup: 'BACK', equipment: 'FOAM_ROLLER' },
-        { name: 'Hip Mobility Flow', muscleGroup: 'GLUTES', equipment: 'BODYWEIGHT' },
-        { name: 'Hamstring Stretch', muscleGroup: 'HAMSTRINGS', equipment: 'BODYWEIGHT' },
-        { name: 'Calf Stretch', muscleGroup: 'CALVES', equipment: 'BODYWEIGHT' },
-        { name: 'Shoulder Mobility Drill', muscleGroup: 'SHOULDERS', equipment: 'STRETCH_BANDS' },
+
+        // Full-body stretches
+        { name: 'Cat Cow Stretch', muscleGroup: 'ABS', equipment: 'BODYWEIGHT' },
+        { name: 'Child’s Pose', muscleGroup: 'ABS', equipment: 'YOGA_MATS' },
+        { name: 'Downward Dog', muscleGroup: 'HAMSTRINGS', equipment: 'YOGA_MATS' },
+        { name: 'Cobra Stretch', muscleGroup: 'ABS', equipment: 'YOGA_MATS' },
+        { name: 'Couch Stretch', muscleGroup: 'QUADRICEPS', equipment: 'BODYWEIGHT' },
+
+        // Hamstring stretches
+        { name: 'Hamstring Stretch', muscleGroup: 'HAMSTRINGS', equipment: 'YOGA_MATS' },
+        { name: 'Standing Hamstring Stretch', muscleGroup: 'HAMSTRINGS', equipment: 'BODYWEIGHT' },
+        { name: 'Seated Forward Fold', muscleGroup: 'HAMSTRINGS', equipment: 'YOGA_MATS' },
+
+        // Glute stretches
+        { name: 'Hip Flexor Stretch', muscleGroup: 'GLUTES', equipment: 'BODYWEIGHT' },
+        { name: 'Pigeon Pose', muscleGroup: 'GLUTES', equipment: 'YOGA_MATS' },
+        { name: 'Figure Four Stretch', muscleGroup: 'GLUTES', equipment: 'BODYWEIGHT' },
+
+        // Quadriceps stretches
+        { name: 'Quad Stretch', muscleGroup: 'QUADRICEPS', equipment: 'BODYWEIGHT' },
+        { name: 'Standing Quad Stretch', muscleGroup: 'QUADRICEPS', equipment: 'BODYWEIGHT' },
+
+        // Calf stretches
+        { name: 'Calf Stretch Against Wall', muscleGroup: 'CALVES', equipment: 'BODYWEIGHT' },
+        { name: 'Seated Calf Stretch', muscleGroup: 'CALVES', equipment: 'YOGA_MATS' },
+
+        // Shoulder stretches
+        { name: 'Shoulder Dislocates', muscleGroup: 'SHOULDERS', equipment: 'RESISTANCE_BANDS' },
+        { name: 'Cross Body Shoulder Stretch', muscleGroup: 'SHOULDERS', equipment: 'BODYWEIGHT' },
+        { name: 'Overhead Tricep Stretch', muscleGroup: 'TRICEPS', equipment: 'BODYWEIGHT' },
+
+        // Forearm stretches
+        { name: 'Wrist Flexor Stretch', muscleGroup: 'FOREARMS', equipment: 'BODYWEIGHT' },
+        { name: 'Wrist Extensor Stretch', muscleGroup: 'FOREARMS', equipment: 'BODYWEIGHT' },
+
+        // Back stretches
+        { name: 'Thoracic Spine Rotation', muscleGroup: 'BACK', equipment: 'BODYWEIGHT' },
+        { name: 'Wall Angels', muscleGroup: 'SHOULDERS', equipment: 'BODYWEIGHT' },
+        { name: 'Scapular Retraction Drill', muscleGroup: 'BACK', equipment: 'BODYWEIGHT' },
+
+        // Foam rolling exercises
+        { name: 'Foam Rolling Quads', muscleGroup: 'QUADRICEPS', equipment: 'FOAM_ROLLER' },
+        { name: 'Foam Rolling Hamstrings', muscleGroup: 'HAMSTRINGS', equipment: 'FOAM_ROLLER' },
+        { name: 'Foam Rolling Back', muscleGroup: 'BACK', equipment: 'FOAM_ROLLER' },
+        { name: 'Foam Rolling Calves', muscleGroup: 'CALVES', equipment: 'FOAM_ROLLER' },
+
+        // Resistance band mobility exercises
+        { name: 'Resistance Band Shoulder Mobility', muscleGroup: 'SHOULDERS', equipment: 'RESISTANCE_BANDS' },
+        { name: 'Resistance Band Hip Mobility', muscleGroup: 'GLUTES', equipment: 'RESISTANCE_BANDS' },
+        { name: 'Ankle Mobility Drill', muscleGroup: 'CALVES', equipment: 'BODYWEIGHT' }
       ],
     },
     {
@@ -841,16 +988,46 @@ export class DayPageComponent {
       planType: 'BODYWEIGHT',
       difficulty: 'BEGINNER',
       exercises: [
+        // Upper body exercises
         { name: 'Push-Up', muscleGroup: 'CHEST', equipment: 'BODYWEIGHT' },
+        { name: 'Wide Push-Up', muscleGroup: 'CHEST', equipment: 'BODYWEIGHT' },
+        { name: 'Diamond Push-Up', muscleGroup: 'TRICEPS', equipment: 'BODYWEIGHT' },
+        { name: 'Decline Push-Up', muscleGroup: 'CHEST', equipment: 'BODYWEIGHT' },
+        { name: 'Incline Push-Up', muscleGroup: 'CHEST', equipment: 'BODYWEIGHT' },
         { name: 'Pull-Up', muscleGroup: 'BACK', equipment: 'BODYWEIGHT' },
+        { name: 'Chin-Up', muscleGroup: 'BICEPS', equipment: 'BODYWEIGHT' },
+        { name: 'Inverted Row', muscleGroup: 'BACK', equipment: 'BODYWEIGHT' },
+        { name: 'Superman Hold', muscleGroup: 'BACK', equipment: 'BODYWEIGHT' },
         { name: 'Bodyweight Squat', muscleGroup: 'QUADRICEPS', equipment: 'BODYWEIGHT' },
-        { name: 'Walking Lunge', muscleGroup: 'LEGS', equipment: 'BODYWEIGHT' },
+        { name: 'Jump Squat', muscleGroup: 'QUADRICEPS', equipment: 'BODYWEIGHT' },
+        { name: 'Pulse Squat', muscleGroup: 'QUADRICEPS', equipment: 'BODYWEIGHT' },
+        { name: 'Wall Sit', muscleGroup: 'QUADRICEPS', equipment: 'BODYWEIGHT' },
+        { name: 'Walking Lunge', muscleGroup: 'QUADRICEPS', equipment: 'BODYWEIGHT' },
+        { name: 'Reverse Lunge', muscleGroup: 'QUADRICEPS', equipment: 'BODYWEIGHT' },
+        { name: 'Lunge Jump', muscleGroup: 'QUADRICEPS', equipment: 'BODYWEIGHT' },
         { name: 'Glute Bridge', muscleGroup: 'GLUTES', equipment: 'BODYWEIGHT' },
+        { name: 'Single Leg Glute Bridge', muscleGroup: 'GLUTES', equipment: 'BODYWEIGHT' },
+        { name: 'Donkey Kicks', muscleGroup: 'GLUTES', equipment: 'BODYWEIGHT' },
+        { name: 'Fire Hydrants', muscleGroup: 'GLUTES', equipment: 'BODYWEIGHT' },
         { name: 'Plank', muscleGroup: 'ABS', equipment: 'BODYWEIGHT' },
+        { name: 'Side Plank', muscleGroup: 'ABS', equipment: 'BODYWEIGHT' },
+        { name: 'Mountain Climbers', muscleGroup: 'ABS', equipment: 'BODYWEIGHT' },
+        { name: 'Bicycle Crunch', muscleGroup: 'ABS', equipment: 'BODYWEIGHT' },
+        { name: 'Leg Raises', muscleGroup: 'ABS', equipment: 'BODYWEIGHT' },
+        { name: 'Hollow Body Hold', muscleGroup: 'ABS', equipment: 'BODYWEIGHT' },
+        { name: 'Burpees', muscleGroup: 'CARDIO', equipment: 'BODYWEIGHT' },
+        { name: 'High Knees', muscleGroup: 'CARDIO', equipment: 'BODYWEIGHT' },
+        { name: 'Jumping Jacks', muscleGroup: 'CARDIO', equipment: 'BODYWEIGHT' },
+        { name: 'Skaters', muscleGroup: 'CARDIO', equipment: 'BODYWEIGHT' },
+        { name: 'Bench Dips', muscleGroup: 'TRICEPS', equipment: 'BODYWEIGHT' },
+        { name: 'Tricep Dip (Parallel Bars)', muscleGroup: 'TRICEPS', equipment: 'BODYWEIGHT' },
+        { name: 'Bear Crawl', muscleGroup: 'SHOULDERS', equipment: 'BODYWEIGHT' },
+        { name: 'Plank Shoulder Taps', muscleGroup: 'SHOULDERS', equipment: 'BODYWEIGHT' }
       ],
     },
   ];
 
+  protected selectedPlanType = this.workoutPlans[0].planType;
   protected selectedPlanName = this.workoutPlans[0].name;
   protected selectedMuscleGroup: MuscleGroup = this.workoutPlans[0].exercises[0].muscleGroup;
   protected selectedEquipment: Equipment = this.workoutPlans[0].exercises[0].equipment;
@@ -859,8 +1036,20 @@ export class DayPageComponent {
   protected notes = '';
   protected loggedExercises: LoggedExercise[] = [];
 
+  protected get availablePlanTypes(): string[] {
+    return [...new Set(this.workoutPlans.map((plan) => plan.planType))];
+  }
+
+  protected get plansForSelectedType(): WorkoutPlan[] {
+    return this.workoutPlans.filter((plan) => plan.planType === this.selectedPlanType);
+  }
+
   protected get selectedPlan(): WorkoutPlan {
-    return this.workoutPlans.find((plan) => plan.name === this.selectedPlanName) ?? this.workoutPlans[0];
+    return (
+      this.plansForSelectedType.find((plan) => plan.name === this.selectedPlanName) ??
+      this.plansForSelectedType[0] ??
+      this.workoutPlans[0]
+    );
   }
 
   protected isOddChoice = false;
@@ -894,6 +1083,13 @@ export class DayPageComponent {
           exercise.muscleGroup === this.selectedMuscleGroup && exercise.equipment === equipment,
       ),
     );
+  }
+
+  protected get equipmentDisplayOptions(): { value: Equipment; label: string }[] {
+    return this.availableEquipmentOptions.map((equipment) => ({
+      value: equipment,
+      label: this.formatLabel(equipment),
+    }));
   }
 
   protected get filteredExercises(): ExerciseOption[] {
@@ -956,6 +1152,14 @@ export class DayPageComponent {
     this.selectedExerciseName = firstExercise?.name ?? '';
   }
 
+  protected onPlanTypeChange(): void {
+    const firstPlanForType = this.plansForSelectedType[0];
+    if (!firstPlanForType) return;
+
+    this.selectedPlanName = firstPlanForType.name;
+    this.onPlanChange();
+  }
+
   protected toggleOddChoice(): void {
     this.isOddChoice = !this.isOddChoice;
     if (!this.availableMuscleGroups.includes(this.selectedMuscleGroup)) {
@@ -980,6 +1184,14 @@ export class DayPageComponent {
 
   protected removeExercise(entryId: number): void {
     this.loggedExercises = this.loggedExercises.filter((entry) => entry.id !== entryId);
+  }
+
+  protected formatLabel(value: string): string {
+    return value
+      .toLowerCase()
+      .split('_')
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join(' ');
   }
 
   private buildSampleEntries(routeDate: string): LoggedExercise[] {
@@ -1033,5 +1245,3 @@ export class DayPageComponent {
   }
 
 }
-
-

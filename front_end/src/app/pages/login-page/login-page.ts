@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { AuthService } from '../../shared/auth.service';
 
 @Component({
     selector: 'app-login-page',
@@ -33,7 +34,9 @@ import { RouterLink } from '@angular/router';
             />
           </label>
 
-          <button type="submit" [disabled]="loginForm.invalid">Log In</button>
+          <button type="submit" [disabled]="loginForm.invalid || loading">
+            {{ loading ? 'Logging in…' : 'Log In' }}
+          </button>
         </form>
 
         <p class="switch-link">
@@ -131,8 +134,22 @@ export class LoginPageComponent {
   };
 
   protected message = '';
+  protected loading = false;
+
+  constructor(private auth: AuthService, private router: Router) {}
 
   protected onSubmit(): void {
-    this.message = `Ready to log in ${this.form.username}. Next we will connect this form to the backend.`;
+    this.loading = true;
+    this.message = '';
+
+    this.auth.login(this.form.username, this.form.password).subscribe({
+      next: () => this.router.navigate(['/app']),
+      error: (err) => {
+        this.loading = false;
+        this.message = err.status === 401
+          ? 'Incorrect username or password.'
+          : 'Something went wrong. Is the server running?';
+      },
+    });
   }
 }
