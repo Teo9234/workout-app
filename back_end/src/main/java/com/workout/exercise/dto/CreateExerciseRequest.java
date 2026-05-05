@@ -8,7 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record CreateExerciseRequest(
-        @NotBlank(message = "Exercise name is required") @Size(min = 2, max = 30, message = "Exercise name must be between 2 and 30 characters") String name,
+        @NotBlank(message = "Exercise name is required") @Size(min = 2, max = 100, message = "Exercise name must be between 2 and 100 characters") String name,
 
         @NotNull(message = "Muscle group is required") MuscleGroup muscleGroup,
 

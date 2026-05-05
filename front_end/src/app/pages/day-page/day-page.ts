@@ -1,6 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
 
 import {
   EQUIPMENT_OPTIONS,
@@ -8,6 +9,8 @@ import {
   type Equipment,
   type MuscleGroup,
 } from '../../shared/exercise-taxonomy';
+import { WorkoutApiService } from '../../shared/workout-api.service';
+import { UserService } from '../../shared/user.service';
 
 type ExerciseOption = {
   name: string;
@@ -50,6 +53,10 @@ type LoggedExercise = {
 
         <a routerLink="/app/calendar" class="back-link">Back to calendar</a>
       </header>
+
+      @if (saveMessage) {
+        <p class="save-status" [class.save-error]="saveError">{{ saveMessage }}</p>
+      }
 
       <section class="page-grid">
         <article class="card plan-card">
@@ -222,6 +229,10 @@ type LoggedExercise = {
               </article>
             }
           </div>
+
+          <button type="button" class="save-button" [disabled]="saving" (click)="saveWorkout()">
+            {{ saving ? 'Saving…' : 'Save Workout' }}
+          </button>
         }
       </section>
     </section>
@@ -397,6 +408,24 @@ type LoggedExercise = {
 
     .delete-button {
       background: #9d2b25;
+    }
+
+    .save-button {
+      margin-top: 8px;
+      background: #1c6e8c;
+    }
+
+    .save-status {
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: #d4edda;
+      color: #155724;
+      margin: 0;
+    }
+
+    .save-status.save-error {
+      background: #f8d7da;
+      color: #721c24;
     }
 
     .field-grid {
@@ -1035,6 +1064,14 @@ export class DayPageComponent {
   protected formattedDate = '';
   protected notes = '';
   protected loggedExercises: LoggedExercise[] = [];
+  protected saving = false;
+  protected saveMessage = '';
+  protected saveError = false;
+  private routeDate = '';
+
+  private workoutApi = inject(WorkoutApiService);
+  private userService = inject(UserService);
+  private cdr = inject(ChangeDetectorRef);
 
   protected get availablePlanTypes(): string[] {
     return [...new Set(this.workoutPlans.map((plan) => plan.planType))];
@@ -1116,10 +1153,47 @@ export class DayPageComponent {
 
   constructor() {
     this.route.paramMap.subscribe((params) => {
-      const routeDate = params.get('date') ?? this.toIsoDate(new Date());
-      this.formattedDate = this.formatDate(routeDate);
-      this.loggedExercises = this.buildSampleEntries(routeDate);
-      this.notes = `Notes for ${routeDate} will live here.`;
+      this.routeDate = params.get('date') ?? this.toIsoDate(new Date());
+      this.formattedDate = this.formatDate(this.routeDate);
+      this.loggedExercises = [];
+      this.notes = '';
+      this.saveMessage = '';
+    });
+  }
+
+  protected saveWorkout(): void {
+    const user = this.userService.getMe();
+    if (!user) {
+      this.saveMessage = 'You must be logged in to save.';
+      this.saveError = true;
+      return;
+    }
+
+    this.saving = true;
+    this.saveMessage = '';
+    this.saveError = false;
+
+    this.workoutApi.saveWorkout(
+      user.id,
+      this.routeDate,
+      this.notes,
+      this.loggedExercises,
+    ).pipe(
+      finalize(() => {
+        this.saving = false;
+        this.cdr.detectChanges();
+      }),
+    ).subscribe({
+      next: () => {
+        this.saveMessage = 'Workout saved!';
+        this.saveError = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.saveMessage = 'Failed to save. Is the server running?';
+        this.saveError = true;
+        this.cdr.detectChanges();
+      },
     });
   }
 

@@ -71,6 +71,15 @@ public class ExerciseController {
         return ResponseEntity.status(HttpStatus.CREATED).body(mapExerciseToResponse(created));
     }
 
+    // POST /api/exercises/find-or-create
+    // Looks up an exercise by name; creates it if it doesn't exist.
+    @PostMapping("/find-or-create")
+    public ExerciseResponse findOrCreate(@Valid @RequestBody CreateExerciseRequest request) {
+        Exercise exercise = exerciseService.findOrCreate(
+                request.name(), request.muscleGroup(), request.equipment());
+        return mapExerciseToResponse(exercise);
+    }
+
     // PUT /api/exercises/{id}
     @PutMapping("/{id}")
     public ExerciseResponse updateExercise(@PathVariable Long id, @Valid @RequestBody CreateExerciseRequest request) {

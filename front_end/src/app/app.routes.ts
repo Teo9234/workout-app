@@ -5,6 +5,7 @@ import { CalendarPageComponent } from './pages/calendar-page/calendar-page';
 import { DayPageComponent } from './pages/day-page/day-page';
 import { LoginPageComponent } from './pages/login-page/login-page';
 import { RegisterPageComponent } from './pages/register-page/register-page';
+import { authGuard } from './shared/auth.guard';
 
 export const routes: Routes = [
   {
@@ -23,6 +24,7 @@ export const routes: Routes = [
   {
     path: 'app',
     component: AppShellComponent,
+    canActivate: [authGuard],
     children: [
       {
         path: '',

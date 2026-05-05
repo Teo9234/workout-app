@@ -47,6 +47,12 @@ public class ExerciseService {
         return exerciseRepository.save(exercise);
     }
 
+    // Find an exercise by name, or create it if it doesn't exist
+    public Exercise findOrCreate(String name, MuscleGroup muscleGroup, Equipment equipment) {
+        return exerciseRepository.findByNameIgnoreCase(name)
+                .orElseGet(() -> exerciseRepository.save(new Exercise(name, muscleGroup, equipment, null)));
+    }
+
     // Update an existing exercise
     public Exercise updateExercise(Long id, Exercise updatedExercise) {
         // Load the existing row first so JPA updates this record instead of creating a

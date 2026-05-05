@@ -4,6 +4,8 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,6 +31,13 @@ public class UserController {
     // Constructor injection for UserService
     public UserController(UserService userService) {
         this.userService = userService;
+    }
+
+    // GET /api/users/me — returns the currently authenticated user
+    @GetMapping("/me")
+    public WorkoutUserResponse getMe(@AuthenticationPrincipal UserDetails userDetails) {
+        User user = userService.getUserByUsername(userDetails.getUsername());
+        return mapToResponse(user);
     }
 
     // Get all users
@@ -89,6 +98,7 @@ public class UserController {
     // Helper method to convert User entity to WorkoutUserResponse DTO
     private WorkoutUserResponse mapToResponse(User user) {
         return new WorkoutUserResponse(
+                user.getId(),
                 user.getUsername(),
                 user.getEmail(),
                 user.getFirstName(),
