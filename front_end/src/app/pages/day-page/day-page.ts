@@ -286,6 +286,7 @@ type LoggedExercise = {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 16px;
+      align-items: start;
     }
 
     .card,
@@ -298,11 +299,15 @@ type LoggedExercise = {
     }
 
     .add-card,
-    .plan-card,
     .notes-card,
     .entries-section {
       display: grid;
       gap: 16px;
+    }
+
+    .plan-card {
+      display: grid;
+      gap: 10px;
     }
 
     textarea,
@@ -547,7 +552,6 @@ export class DayPageComponent {
         { name: 'Assisted Dips', muscleGroup: 'TRICEPS', equipment: 'ASSISTED_PULL_UP_MACHINE' },
         { name: 'Parallel Bar Dips', muscleGroup: 'TRICEPS', equipment: 'BODYWEIGHT' },
         { name: 'Tricep Extension Machine', muscleGroup: 'TRICEPS', equipment: 'TRICEP_EXTENSION_MACHINE' }
-
       ],
     },
     {
@@ -1036,7 +1040,7 @@ export class DayPageComponent {
     {
       name: 'Bodyweight Circuit',
       description: 'No-equipment workout using bodyweight only.',
-      planType: 'BODYWEIGHT',
+      planType: 'BODYWEIGHT', 
       difficulty: 'BEGINNER',
       exercises: [
         // Upper body exercises
@@ -1243,7 +1247,7 @@ export class DayPageComponent {
         difficulty: plan.difficulty,
         exercises: exercisesByPlanName.get(plan.name) ?? [],
       }))
-      .filter((plan) => plan.exercises.length > 0);
+      .filter((plan) => plan.exercises.length > 1);
 
     if (mappedPlans.length === 0) return [];
 
