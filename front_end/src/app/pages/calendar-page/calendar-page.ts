@@ -1,11 +1,15 @@
-import { Component } from '@angular/core';
+import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
+import { UserService } from '../../shared/user.service';
+import { WorkoutApiService } from '../../shared/workout-api.service';
 
 type CalendarDay = {
   isoDate: string;
   dayNumber: number;
   isCurrentMonth: boolean;
   isToday: boolean;
+  hasWorkout: boolean;
 };
 
 @Component({
@@ -39,10 +43,11 @@ type CalendarDay = {
             class="day-cell"
             [class.day-cell--outside]="!day.isCurrentMonth"
             [class.day-cell--today]="day.isToday"
+            [class.day-cell--has-workout]="day.hasWorkout"
             [routerLink]="['/app/day', day.isoDate]"
           >
             <span class="day-number">{{ day.dayNumber }}</span>
-            <span class="day-label">Open day</span>
+            <span class="day-label">{{ day.hasWorkout ? 'Workout logged' : 'Open day' }}</span>
           </a>
         }
       </div>
@@ -136,6 +141,11 @@ type CalendarDay = {
       outline-offset: 2px;
     }
 
+    .day-cell--has-workout {
+      background: linear-gradient(180deg, #e7f4ea 0%, #d6ebde 100%);
+      border: 1px solid #9ac5aa;
+    }
+
     .day-number {
       font-size: 1.5rem;
       font-weight: 700;
@@ -173,6 +183,12 @@ export class CalendarPageComponent {
   protected currentMonth = new Date();
   protected monthLabel = '';
   protected calendarDays: CalendarDay[] = [];
+  protected loadingSessions = false;
+
+  private readonly workoutApi = inject(WorkoutApiService);
+  private readonly userService = inject(UserService);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private workoutDates = new Set<string>();
 
   constructor() {
     this.refreshCalendar();
@@ -208,6 +224,47 @@ export class CalendarPageComponent {
     }).format(this.currentMonth);
 
     this.calendarDays = this.buildCalendarDays(this.currentMonth);
+    this.loadMonthSessions();
+  }
+
+  private loadMonthSessions(): void {
+    const user = this.userService.getMe();
+    if (!user) {
+      this.workoutDates = new Set<string>();
+      this.calendarDays = this.buildCalendarDays(this.currentMonth);
+      this.cdr.detectChanges();
+      return;
+    }
+
+    const monthStart = this.toIsoDate(new Date(
+      this.currentMonth.getFullYear(),
+      this.currentMonth.getMonth(),
+      1,
+    ));
+    const monthEnd = this.toIsoDate(new Date(
+      this.currentMonth.getFullYear(),
+      this.currentMonth.getMonth() + 1,
+      0,
+    ));
+
+    this.loadingSessions = true;
+    this.workoutApi.getSessionsBetween(user.id, monthStart, monthEnd).pipe(
+      finalize(() => {
+        this.loadingSessions = false;
+        this.cdr.detectChanges();
+      }),
+    ).subscribe({
+      next: (sessions) => {
+        this.workoutDates = new Set(sessions.map((session) => session.sessionDate));
+        this.calendarDays = this.buildCalendarDays(this.currentMonth);
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.workoutDates = new Set<string>();
+        this.calendarDays = this.buildCalendarDays(this.currentMonth);
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   private buildCalendarDays(anchorDate: Date): CalendarDay[] {
@@ -229,6 +286,7 @@ export class CalendarPageComponent {
         dayNumber: date.getDate(),
         isCurrentMonth: date.getMonth() === anchorDate.getMonth(),
         isToday: isoDate === today,
+        hasWorkout: this.workoutDates.has(isoDate),
       };
     });
   }

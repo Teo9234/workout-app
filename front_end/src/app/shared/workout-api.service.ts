@@ -6,8 +6,45 @@ interface SessionResponse {
   id: number;
 }
 
-interface ExerciseResponse {
+interface FindOrCreateExerciseResponse {
   id: number;
+}
+
+export interface WorkoutPlanResponse {
+  id: number;
+  name: string;
+  description: string;
+  planType: string;
+  difficulty: string;
+  active: boolean;
+}
+
+export interface PlanExerciseResponse {
+  id: number;
+  orderIndex: number;
+  targetSets: number;
+  targetReps: number;
+  restSeconds: number;
+  exerciseName: string;
+  planName: string;
+}
+
+export interface ExerciseCatalogItem {
+  id: number;
+  name: string;
+  muscleGroup: string;
+  equipment: string;
+  description: string | null;
+}
+
+export interface WorkoutSessionSummary {
+  id: number;
+  userId: number;
+  sessionDate: string;
+  startTime: string | null;
+  endTime: string | null;
+  notes: string | null;
+  workoutPlanId: number | null;
 }
 
 export interface ExerciseToSave {
@@ -28,6 +65,28 @@ export class WorkoutApiService {
   private readonly base = 'http://localhost:8080/api';
 
   constructor(private http: HttpClient) {}
+
+  getSessionsBetween(
+    userId: number,
+    startDate: string,
+    endDate: string,
+  ): Observable<WorkoutSessionSummary[]> {
+    return this.http.get<WorkoutSessionSummary[]>(
+      `${this.base}/workout-sessions/user/${userId}/between?startDate=${startDate}&endDate=${endDate}`,
+    );
+  }
+
+  getWorkoutPlans(): Observable<WorkoutPlanResponse[]> {
+    return this.http.get<WorkoutPlanResponse[]>(`${this.base}/workout-plans`);
+  }
+
+  getPlanExercises(): Observable<PlanExerciseResponse[]> {
+    return this.http.get<PlanExerciseResponse[]>(`${this.base}/plan-exercises`);
+  }
+
+  getExercises(): Observable<ExerciseCatalogItem[]> {
+    return this.http.get<ExerciseCatalogItem[]>(`${this.base}/exercises`);
+  }
 
   // Full save: creates a session, then for every exercise finds-or-creates
   // the exercise in the DB and posts each individual set.
@@ -64,7 +123,7 @@ export class WorkoutApiService {
   private saveOneExercise(sessionId: number, exercise: ExerciseToSave): Observable<unknown> {
     // Step 2a: find or create the exercise record
     return this.http
-      .post<ExerciseResponse>(`${this.base}/exercises/find-or-create`, {
+      .post<FindOrCreateExerciseResponse>(`${this.base}/exercises/find-or-create`, {
         name: exercise.name,
         muscleGroup: exercise.muscleGroup,
         equipment: exercise.equipment,

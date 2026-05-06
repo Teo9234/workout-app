@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { finalize } from 'rxjs';
+import { finalize, forkJoin } from 'rxjs';
 
 import {
   EQUIPMENT_OPTIONS,
@@ -9,7 +9,12 @@ import {
   type Equipment,
   type MuscleGroup,
 } from '../../shared/exercise-taxonomy';
-import { WorkoutApiService } from '../../shared/workout-api.service';
+import {
+  type ExerciseCatalogItem,
+  type PlanExerciseResponse,
+  type WorkoutPlanResponse,
+  WorkoutApiService,
+} from '../../shared/workout-api.service';
 import { UserService } from '../../shared/user.service';
 
 type ExerciseOption = {
@@ -1159,6 +1164,91 @@ export class DayPageComponent {
       this.notes = '';
       this.saveMessage = '';
     });
+
+    this.loadWorkoutPlansFromApi();
+  }
+
+  private loadWorkoutPlansFromApi(): void {
+    forkJoin({
+      plans: this.workoutApi.getWorkoutPlans(),
+      planExercises: this.workoutApi.getPlanExercises(),
+      exercises: this.workoutApi.getExercises(),
+    }).subscribe({
+      next: ({ plans, planExercises, exercises }) => {
+        const loadedPlans = this.mapBackendPlans(plans, planExercises, exercises);
+        if (loadedPlans.length === 0) return;
+
+        this.workoutPlans = loadedPlans;
+        this.selectedPlanType = this.workoutPlans[0].planType;
+        this.selectedPlanName = this.workoutPlans[0].name;
+
+        const firstExercise = this.workoutPlans[0].exercises[0];
+        if (firstExercise) {
+          this.selectedMuscleGroup = firstExercise.muscleGroup;
+          this.selectedEquipment = firstExercise.equipment;
+          this.selectedExerciseName = firstExercise.name;
+        }
+
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        // Keep hardcoded plans as fallback when backend data is unavailable.
+      },
+    });
+  }
+
+  private mapBackendPlans(
+    plans: WorkoutPlanResponse[],
+    planExercises: PlanExerciseResponse[],
+    exercises: ExerciseCatalogItem[],
+  ): WorkoutPlan[] {
+    const exerciseByName = new Map<string, ExerciseCatalogItem>(
+      exercises.map((exercise) => [exercise.name.toLowerCase(), exercise]),
+    );
+
+    const exercisesByPlanName = new Map<string, ExerciseOption[]>();
+    for (const planExercise of planExercises) {
+      const exercise = exerciseByName.get(planExercise.exerciseName.toLowerCase());
+      if (!exercise) continue;
+
+      const existing = exercisesByPlanName.get(planExercise.planName) ?? [];
+      existing.push({
+        name: exercise.name,
+        muscleGroup: exercise.muscleGroup as MuscleGroup,
+        equipment: exercise.equipment as Equipment,
+      });
+      exercisesByPlanName.set(planExercise.planName, existing);
+    }
+
+    const mappedPlans: WorkoutPlan[] = plans
+      .filter((plan) => plan.active)
+      .map((plan) => ({
+        name: plan.name,
+        description: plan.description,
+        planType: plan.planType,
+        difficulty: plan.difficulty,
+        exercises: exercisesByPlanName.get(plan.name) ?? [],
+      }))
+      .filter((plan) => plan.exercises.length > 0);
+
+    if (mappedPlans.length === 0) return [];
+
+    const hasCustom = mappedPlans.some((plan) => plan.planType === 'CUSTOM');
+    if (!hasCustom) {
+      mappedPlans.push({
+        name: 'All-Round Mixer',
+        description: 'Flexible plan generated from all exercises in your database.',
+        planType: 'CUSTOM',
+        difficulty: 'ALL_LEVELS',
+        exercises: exercises.map((exercise) => ({
+          name: exercise.name,
+          muscleGroup: exercise.muscleGroup as MuscleGroup,
+          equipment: exercise.equipment as Equipment,
+        })),
+      });
+    }
+
+    return mappedPlans;
   }
 
   protected saveWorkout(): void {
