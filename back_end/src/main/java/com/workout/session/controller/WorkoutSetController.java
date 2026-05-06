@@ -118,6 +118,7 @@ public class WorkoutSetController {
                 workoutSet.getId(),
                 workoutSet.getWorkoutSession().getId(),
                 workoutSet.getExercise().getId(),
+                workoutSet.getExercise().getName(),
                 workoutSet.getSetNumber(),
                 workoutSet.getReps(),
                 workoutSet.getWeight(),

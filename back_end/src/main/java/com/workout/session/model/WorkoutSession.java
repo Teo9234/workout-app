@@ -55,6 +55,9 @@ public class WorkoutSession {
     @JoinColumn(name = "workout_plan_id", nullable = true)
     private WorkoutPlan workoutPlan;
 
+    @Column(name = "rest_day", nullable = false)
+    private boolean restDay = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

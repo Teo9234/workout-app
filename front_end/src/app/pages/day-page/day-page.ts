@@ -68,18 +68,9 @@ type LoggedExercise = {
           <h3>Workout plan</h3>
 
           <label>
-            <span>Plan type</span>
-            <select [(ngModel)]="selectedPlanType" name="selectedPlanType" (ngModelChange)="onPlanTypeChange()">
-              @for (planType of availablePlanTypes; track planType) {
-                <option [value]="planType">{{ formatLabel(planType) }}</option>
-              }
-            </select>
-          </label>
-
-          <label>
             <span>Plan</span>
             <select [(ngModel)]="selectedPlanName" name="selectedPlanName" (ngModelChange)="onPlanChange()">
-              @for (plan of plansForSelectedType; track plan.name) {
+              @for (plan of workoutPlans; track plan.name) {
                 <option [value]="plan.name">{{ plan.name }}</option>
               }
             </select>
@@ -175,6 +166,11 @@ type LoggedExercise = {
         @if (loggedExercises.length === 0) {
           <article class="empty-state">
             <p>No exercises logged yet for this day.</p>
+            <div class="empty-actions">
+              <button type="button" class="rest-day-button" [disabled]="markingRest" (click)="markRestDay()">
+                {{ markingRest ? 'Saving…' : 'Mark as Rest Day' }}
+              </button>
+            </div>
           </article>
         } @else {
           <div class="entries-list">
@@ -237,6 +233,9 @@ type LoggedExercise = {
 
           <button type="button" class="save-button" [disabled]="saving" (click)="saveWorkout()">
             {{ saving ? 'Saving…' : 'Save Workout' }}
+          </button>
+          <button type="button" class="rest-day-button" [disabled]="markingRest" (click)="markRestDay()">
+            {{ markingRest ? 'Saving…' : 'Mark as Rest Day' }}
           </button>
         }
       </section>
@@ -418,6 +417,24 @@ type LoggedExercise = {
     .save-button {
       margin-top: 8px;
       background: #1c6e8c;
+    }
+
+    .rest-day-button {
+      margin-top: 8px;
+      background: #5a2d82;
+    }
+
+    .empty-actions {
+      margin-top: 12px;
+    }
+
+    .rest-day-button {
+      margin-top: 8px;
+      background: #5a2d82;
+    }
+
+    .empty-actions {
+      margin-top: 12px;
     }
 
     .save-status {
@@ -1061,7 +1078,6 @@ export class DayPageComponent {
     },
   ];
 
-  protected selectedPlanType = this.workoutPlans[0].planType;
   protected selectedPlanName = this.workoutPlans[0].name;
   protected selectedMuscleGroup: MuscleGroup = this.workoutPlans[0].exercises[0].muscleGroup;
   protected selectedEquipment: Equipment = this.workoutPlans[0].exercises[0].equipment;
@@ -1072,24 +1088,16 @@ export class DayPageComponent {
   protected saving = false;
   protected saveMessage = '';
   protected saveError = false;
+  protected markingRest = false;
   private routeDate = '';
 
   private workoutApi = inject(WorkoutApiService);
   private userService = inject(UserService);
   private cdr = inject(ChangeDetectorRef);
 
-  protected get availablePlanTypes(): string[] {
-    return [...new Set(this.workoutPlans.map((plan) => plan.planType))];
-  }
-
-  protected get plansForSelectedType(): WorkoutPlan[] {
-    return this.workoutPlans.filter((plan) => plan.planType === this.selectedPlanType);
-  }
-
   protected get selectedPlan(): WorkoutPlan {
     return (
-      this.plansForSelectedType.find((plan) => plan.name === this.selectedPlanName) ??
-      this.plansForSelectedType[0] ??
+      this.workoutPlans.find((plan) => plan.name === this.selectedPlanName) ??
       this.workoutPlans[0]
     );
   }
@@ -1178,11 +1186,17 @@ export class DayPageComponent {
         const loadedPlans = this.mapBackendPlans(plans, planExercises, exercises);
         if (loadedPlans.length === 0) return;
 
-        this.workoutPlans = loadedPlans;
-        this.selectedPlanType = this.workoutPlans[0].planType;
-        this.selectedPlanName = this.workoutPlans[0].name;
+        this.workoutPlans = this.mergePlansPreservingDefaults(loadedPlans);
 
-        const firstExercise = this.workoutPlans[0].exercises[0];
+        const currentPlanStillExists = this.workoutPlans.some(
+          (plan) => plan.name === this.selectedPlanName,
+        );
+
+        if (!currentPlanStillExists) {
+          this.selectedPlanName = this.workoutPlans[0].name;
+        }
+
+        const firstExercise = this.selectedPlan.exercises[0];
         if (firstExercise) {
           this.selectedMuscleGroup = firstExercise.muscleGroup;
           this.selectedEquipment = firstExercise.equipment;
@@ -1251,6 +1265,18 @@ export class DayPageComponent {
     return mappedPlans;
   }
 
+  private mergePlansPreservingDefaults(loadedPlans: WorkoutPlan[]): WorkoutPlan[] {
+    const existingKeys = new Set(
+      this.workoutPlans.map((plan) => `${plan.planType}::${plan.name}`),
+    );
+
+    const backendOnlyPlans = loadedPlans.filter(
+      (plan) => !existingKeys.has(`${plan.planType}::${plan.name}`),
+    );
+
+    return [...this.workoutPlans, ...backendOnlyPlans];
+  }
+
   protected saveWorkout(): void {
     const user = this.userService.getMe();
     if (!user) {
@@ -1287,6 +1313,33 @@ export class DayPageComponent {
     });
   }
 
+  protected markRestDay(): void {
+    const user = this.userService.getMe();
+    if (!user) return;
+
+    this.markingRest = true;
+    this.saveMessage = '';
+    this.saveError = false;
+
+    this.workoutApi.markRestDay(user.id, this.routeDate).pipe(
+      finalize(() => {
+        this.markingRest = false;
+        this.cdr.detectChanges();
+      }),
+    ).subscribe({
+      next: () => {
+        this.saveMessage = 'Rest day saved!';
+        this.saveError = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.saveMessage = 'Failed to save rest day.';
+        this.saveError = true;
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
   protected addExercise(): void {
     const selectedExercise = this.selectedExercise;
 
@@ -1314,14 +1367,6 @@ export class DayPageComponent {
     this.selectedMuscleGroup = firstExercise?.muscleGroup ?? MUSCLE_GROUPS[0];
     this.selectedEquipment = firstExercise?.equipment ?? EQUIPMENT_OPTIONS[0];
     this.selectedExerciseName = firstExercise?.name ?? '';
-  }
-
-  protected onPlanTypeChange(): void {
-    const firstPlanForType = this.plansForSelectedType[0];
-    if (!firstPlanForType) return;
-
-    this.selectedPlanName = firstPlanForType.name;
-    this.onPlanChange();
   }
 
   protected toggleOddChoice(): void {

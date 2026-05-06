@@ -6,6 +6,7 @@ public record WorkoutSetResponse(
                 Long id,
                 Long workoutSessionId,
                 Long exerciseId,
+                String exerciseName,
                 Integer setNumber,
                 Integer reps,
                 BigDecimal weight,

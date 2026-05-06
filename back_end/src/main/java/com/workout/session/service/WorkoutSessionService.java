@@ -6,10 +6,12 @@ import java.time.YearMonth;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.workout.core.exceptions.ResourceNotFoundException;
 import com.workout.plan.model.WorkoutPlan;
 import com.workout.session.model.WorkoutSession;
+import com.workout.session.repository.WorkoutSetRepository;
 import com.workout.session.repository.WorkoutSessionRepository;
 import com.workout.user.model.User;
 
@@ -17,11 +19,14 @@ import com.workout.user.model.User;
 public class WorkoutSessionService {
 
     private final WorkoutSessionRepository workoutSessionRepository;
+    private final WorkoutSetRepository workoutSetRepository;
 
     // Constructor injection: Spring provides WorkoutSessionRepository
     // automatically.
-    public WorkoutSessionService(WorkoutSessionRepository workoutSessionRepository) {
+    public WorkoutSessionService(WorkoutSessionRepository workoutSessionRepository,
+            WorkoutSetRepository workoutSetRepository) {
         this.workoutSessionRepository = workoutSessionRepository;
+        this.workoutSetRepository = workoutSetRepository;
     }
 
     // Get all sessions
@@ -128,8 +133,10 @@ public class WorkoutSessionService {
     }
 
     // Delete a session
+    @Transactional
     public void deleteWorkoutSession(Long id) {
         WorkoutSession existing = getWorkoutSessionById(id);
+        workoutSetRepository.deleteByWorkoutSession(existing);
         workoutSessionRepository.delete(existing);
     }
 

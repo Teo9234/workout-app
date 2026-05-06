@@ -18,6 +18,8 @@ public record CreateWorkoutSessionRequest(
 
         @Size(max = 500, message = "Notes cannot exceed 500 characters") String notes,
 
-        Long workoutPlanId) {
+        Long workoutPlanId,
+
+        Boolean restDay) {
 
 }

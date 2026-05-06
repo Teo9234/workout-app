@@ -10,5 +10,6 @@ public record WorkoutSessionResponse(
                 LocalDateTime startTime,
                 LocalDateTime endTime,
                 String notes,
-                Long workoutPlanId) {
+                Long workoutPlanId,
+                boolean restDay) {
 }

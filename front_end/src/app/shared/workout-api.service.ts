@@ -45,6 +45,39 @@ export interface WorkoutSessionSummary {
   endTime: string | null;
   notes: string | null;
   workoutPlanId: number | null;
+  restDay: boolean;
+}
+
+export interface WorkoutSetDetail {
+  id: number;
+  workoutSessionId: number;
+  exerciseId: number;
+  exerciseName: string;
+  setNumber: number;
+  reps: number | null;
+  weight: number | null;
+  durationSeconds: number | null;
+  rpe: number | null;
+  completed: boolean;
+}
+
+export interface UpdateWorkoutSessionRequest {
+  userId: number;
+  sessionDate: string;
+  startTime?: string | null;
+  endTime?: string | null;
+  notes?: string | null;
+  workoutPlanId?: number | null;
+  restDay?: boolean;
+}
+
+export interface UpdateWorkoutSetRequest {
+  setNumber: number;
+  reps?: number | null;
+  weight?: number | null;
+  durationSeconds?: number | null;
+  rpe?: number | null;
+  completed?: boolean;
 }
 
 export interface ExerciseToSave {
@@ -74,6 +107,63 @@ export class WorkoutApiService {
     return this.http.get<WorkoutSessionSummary[]>(
       `${this.base}/workout-sessions/user/${userId}/between?startDate=${startDate}&endDate=${endDate}`,
     );
+  }
+
+  getAllSessions(userId: number): Observable<WorkoutSessionSummary[]> {
+    return this.http.get<WorkoutSessionSummary[]>(
+      `${this.base}/workout-sessions/user/${userId}`,
+    );
+  }
+
+  getSessionSets(sessionId: number): Observable<WorkoutSetDetail[]> {
+    return this.http.get<WorkoutSetDetail[]>(
+      `${this.base}/workout-sets/session/${sessionId}`,
+    );
+  }
+
+  markRestDay(userId: number, sessionDate: string): Observable<WorkoutSessionSummary> {
+    return this.http.post<WorkoutSessionSummary>(
+      `${this.base}/workout-sessions`,
+      { userId, sessionDate, restDay: true },
+    );
+  }
+
+  updateSession(sessionId: number, payload: UpdateWorkoutSessionRequest): Observable<WorkoutSessionSummary> {
+    return this.http.put<WorkoutSessionSummary>(
+      `${this.base}/workout-sessions/${sessionId}`,
+      payload,
+    );
+  }
+
+  deleteSession(sessionId: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/workout-sessions/${sessionId}`);
+  }
+
+  updateWorkoutSet(
+    sessionId: number,
+    exerciseId: number,
+    setId: number,
+    payload: UpdateWorkoutSetRequest,
+  ): Observable<WorkoutSetDetail> {
+    return this.http.put<WorkoutSetDetail>(
+      `${this.base}/workout-sets/session/${sessionId}/exercise/${exerciseId}/set/${setId}`,
+      payload,
+    );
+  }
+
+  createWorkoutSet(
+    sessionId: number,
+    exerciseId: number,
+    payload: UpdateWorkoutSetRequest,
+  ): Observable<WorkoutSetDetail> {
+    return this.http.post<WorkoutSetDetail>(
+      `${this.base}/workout-sets/session/${sessionId}/exercise/${exerciseId}`,
+      payload,
+    );
+  }
+
+  deleteWorkoutSet(setId: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/workout-sets/${setId}`);
   }
 
   getWorkoutPlans(): Observable<WorkoutPlanResponse[]> {

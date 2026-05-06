@@ -131,6 +131,9 @@ public class WorkoutSessionController {
         workoutSession.setStartTime(request.startTime());
         workoutSession.setEndTime(request.endTime());
         workoutSession.setNotes(request.notes());
+        if (Boolean.TRUE.equals(request.restDay())) {
+            workoutSession.setRestDay(true);
+        }
 
         return workoutSession;
     }
@@ -143,6 +146,7 @@ public class WorkoutSessionController {
                 workoutSession.getStartTime(),
                 workoutSession.getEndTime(),
                 workoutSession.getNotes(),
-                workoutSession.getWorkoutPlan() != null ? workoutSession.getWorkoutPlan().getId() : null);
+                workoutSession.getWorkoutPlan() != null ? workoutSession.getWorkoutPlan().getId() : null,
+                workoutSession.isRestDay());
     }
 }

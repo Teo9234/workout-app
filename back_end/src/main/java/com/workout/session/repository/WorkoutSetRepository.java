@@ -10,6 +10,8 @@ import com.workout.exercise.model.Exercise;
 
 public interface WorkoutSetRepository extends JpaRepository<WorkoutSet, Long> {
 
+    void deleteByWorkoutSession(WorkoutSession workoutSession);
+
     // Find all sets for a specific workout session, ordered by set number
     List<WorkoutSet> findByWorkoutSessionOrderBySetNumberAsc(WorkoutSession workoutSession);
 

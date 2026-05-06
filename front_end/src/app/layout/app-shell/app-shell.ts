@@ -1,15 +1,19 @@
 import { Component, inject } from '@angular/core';
-import { Router, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../shared/auth.service';
 
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet],
+  imports: [RouterOutlet, RouterLink],
   template: `
     <main>
       <header class="shell-header">
         <h1>Workout App</h1>
-        <button type="button" (click)="logout()">Logout</button>
+        <nav class="shell-nav">
+          <a routerLink="/app/calendar">Calendar</a>
+          <a routerLink="/app/progress">Progress</a>
+          <button type="button" (click)="logout()">Logout</button>
+        </nav>
       </header>
       <router-outlet />
     </main>
@@ -26,6 +30,18 @@ import { AuthService } from '../../shared/auth.service';
     h1 {
       margin: 0;
       color: #22333b;
+    }
+
+    .shell-nav {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    a {
+      color: #1c6e8c;
+      font-weight: 600;
+      text-decoration: none;
     }
 
     button {
