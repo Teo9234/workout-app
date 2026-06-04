@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { finalize, forkJoin } from 'rxjs';
+import { finalize, forkJoin, switchMap } from 'rxjs';
 
 import {
   EQUIPMENT_OPTIONS,
@@ -24,6 +24,7 @@ type ExerciseOption = {
 };
 
 type WorkoutPlan = {
+  id?: number | null;
   name: string;
   description: string;
   planType: string;
@@ -36,6 +37,8 @@ type LoggedExercise = {
   name: string;
   muscleGroup: MuscleGroup;
   equipment: Equipment;
+  planType: string;
+  oddChoice: boolean;
   sets: number;
   reps: number;
   weight: number;
@@ -689,10 +692,18 @@ export class DayPageComponent {
 
         // Bike exercises
         { name: 'Stationary Bike Ride', muscleGroup: 'CARDIO', equipment: 'EXERCISE_BIKE_UPRIGHT' },
+        { name: 'Upright Bike Endurance Ride', muscleGroup: 'CARDIO', equipment: 'EXERCISE_BIKE_UPRIGHT' },
+        { name: 'Upright Bike Cadence Drill', muscleGroup: 'CARDIO', equipment: 'EXERCISE_BIKE_UPRIGHT' },
         { name: 'Recumbent Bike Ride', muscleGroup: 'CARDIO', equipment: 'RECUMBENT_BIKE' },
+        { name: 'Recumbent Bike Recovery Spin', muscleGroup: 'CARDIO', equipment: 'RECUMBENT_BIKE' },
+        { name: 'Recumbent Bike Intervals', muscleGroup: 'CARDIO', equipment: 'RECUMBENT_BIKE' },
         { name: 'Spin Bike Session', muscleGroup: 'CARDIO', equipment: 'SPIN_BIKE' },
+        { name: 'Spin Bike Hill Climb', muscleGroup: 'CARDIO', equipment: 'SPIN_BIKE' },
+        { name: 'Spin Bike Tempo Ride', muscleGroup: 'CARDIO', equipment: 'SPIN_BIKE' },
         { name: 'HIIT Bike Intervals', muscleGroup: 'CARDIO', equipment: 'SPIN_BIKE' },
         { name: 'Air Bike Sprint', muscleGroup: 'CARDIO', equipment: 'AIR_BIKE' },
+        { name: 'Air Bike Endurance', muscleGroup: 'CARDIO', equipment: 'AIR_BIKE' },
+        { name: 'Air Bike Tabata', muscleGroup: 'CARDIO', equipment: 'AIR_BIKE' },
 
         // Elliptical exercises
         { name: 'Elliptical Trainer', muscleGroup: 'CARDIO', equipment: 'ELLIPTICAL' },
@@ -976,6 +987,8 @@ export class DayPageComponent {
         // Cardio exercises
         { name: 'Treadmill Run', muscleGroup: 'CARDIO', equipment: 'TREADMILL' },
         { name: 'Rowing Machine', muscleGroup: 'CARDIO', equipment: 'ROWING_MACHINE' },
+        { name: 'Upright Bike Endurance Ride', muscleGroup: 'CARDIO', equipment: 'EXERCISE_BIKE_UPRIGHT' },
+        { name: 'Recumbent Bike Intervals', muscleGroup: 'CARDIO', equipment: 'RECUMBENT_BIKE' },
         { name: 'Jump Rope', muscleGroup: 'CARDIO', equipment: 'BODYWEIGHT' }
       ],
     },
@@ -1113,10 +1126,29 @@ export class DayPageComponent {
   }
 
   private get exerciseSource(): ExerciseOption[] {
-    if (!this.isFreeMode) return this.selectedPlan.exercises;
-    return (
-      this.workoutPlans.find((p) => p.planType === 'CUSTOM')?.exercises ?? this.selectedPlan.exercises
-    );
+    if (this.isOddChoice) {
+      return this.getAllPlanExercises();
+    }
+
+    if (this.selectedPlan.planType === 'CUSTOM') {
+      return this.selectedPlan.exercises;
+    }
+
+    return this.selectedPlan.exercises;
+  }
+
+  private getAllPlanExercises(): ExerciseOption[] {
+    const dedupe = new Map<string, ExerciseOption>();
+    for (const plan of this.workoutPlans) {
+      for (const exercise of plan.exercises) {
+        const key = `${exercise.name}::${exercise.muscleGroup}::${exercise.equipment}`;
+        if (!dedupe.has(key)) {
+          dedupe.set(key, exercise);
+        }
+      }
+    }
+
+    return Array.from(dedupe.values());
   }
 
   protected get availableExercises(): ExerciseOption[] {
@@ -1241,6 +1273,7 @@ export class DayPageComponent {
     const mappedPlans: WorkoutPlan[] = plans
       .filter((plan) => plan.active)
       .map((plan) => ({
+        id: plan.id,
         name: plan.name,
         description: plan.description,
         planType: plan.planType,
@@ -1254,6 +1287,7 @@ export class DayPageComponent {
     const hasCustom = mappedPlans.some((plan) => plan.planType === 'CUSTOM');
     if (!hasCustom) {
       mappedPlans.push({
+        id: null,
         name: 'All-Round Mixer',
         description: 'Flexible plan generated from all exercises in your database.',
         planType: 'CUSTOM',
@@ -1293,12 +1327,40 @@ export class DayPageComponent {
     this.saveMessage = '';
     this.saveError = false;
 
-    this.workoutApi.saveWorkout(
-      user.id,
-      this.routeDate,
-      this.notes,
-      this.loggedExercises,
-    ).pipe(
+    this.workoutApi.getSessionsBetween(user.id, this.routeDate, this.routeDate).pipe(
+      switchMap((sessions) => {
+        const existingNotes =
+          sessions.find((session) => session.sessionDate === this.routeDate)?.notes ?? '';
+
+        const mergedPlanTypes = Array.from(new Set([
+          ...this.extractPlanTypeTags(existingNotes),
+          ...this.loggedExercises.map((entry) => entry.planType.toUpperCase()),
+          this.selectedPlan.planType.toUpperCase(),
+        ]));
+
+        const hasOddChoice =
+          this.loggedExercises.some((entry) => entry.oddChoice) || this.hasOddChoiceTag(existingNotes);
+
+        const metadataTags = mergedPlanTypes.map((planType) => `[plan-type:${planType}]`);
+        if (hasOddChoice) {
+          metadataTags.push('[odd-choice]');
+        }
+
+        const enteredNotes = this.stripMetadataTags(this.notes);
+        const existingUserNotes = this.stripMetadataTags(existingNotes);
+        const mergedUserNotes = enteredNotes.length > 0 ? enteredNotes : existingUserNotes;
+        const notesWithMetadata = mergedUserNotes.length > 0
+          ? `${mergedUserNotes}\n${metadataTags.join(' ')}`
+          : metadataTags.join(' ');
+
+        return this.workoutApi.saveWorkout(
+          user.id,
+          this.routeDate,
+          notesWithMetadata,
+          this.selectedPlan.id ?? null,
+          this.loggedExercises,
+        );
+      }),
       finalize(() => {
         this.saving = false;
         this.cdr.detectChanges();
@@ -1354,6 +1416,8 @@ export class DayPageComponent {
         name: selectedExercise.name,
         muscleGroup: selectedExercise.muscleGroup,
         equipment: selectedExercise.equipment,
+        planType: this.selectedPlan.planType,
+        oddChoice: this.isOddChoice,
         sets: 3,
         reps: 10,
         weight: 0,
@@ -1407,6 +1471,21 @@ export class DayPageComponent {
       .join(' ');
   }
 
+  private extractPlanTypeTags(notes: string): string[] {
+    const matches = notes.matchAll(/\[plan-type:([A-Z_]+)\]/gi);
+    return Array.from(matches, (match) => (match[1] ?? '').toUpperCase()).filter((tag) => tag.length > 0);
+  }
+
+  private hasOddChoiceTag(notes: string): boolean {
+    return /\[odd-choice\]/i.test(notes);
+  }
+
+  private stripMetadataTags(notes: string): string {
+    return notes
+      .replace(/\[(plan-type:[A-Z_]+|entry-count:\d+|odd-choice)\]/gi, '')
+      .trim();
+  }
+
   private buildSampleEntries(routeDate: string): LoggedExercise[] {
     const dayNumber = Number(routeDate.slice(-2)) || 1;
 
@@ -1416,6 +1495,8 @@ export class DayPageComponent {
         name: 'Bench Press',
         muscleGroup: 'CHEST',
         equipment: 'BARBELL',
+        planType: 'PUSH',
+        oddChoice: false,
         sets: 4,
         reps: 8,
         weight: 60,
@@ -1428,6 +1509,8 @@ export class DayPageComponent {
         name: 'Running',
         muscleGroup: 'CARDIO',
         equipment: 'TREADMILL',
+        planType: 'CARDIO',
+        oddChoice: false,
         sets: 1,
         reps: 0,
         weight: 0,

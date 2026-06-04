@@ -184,11 +184,17 @@ export class WorkoutApiService {
     userId: number,
     sessionDate: string,   // 'YYYY-MM-DD'
     notes: string,
+    workoutPlanId: number | null,
     exercises: ExerciseToSave[],
   ): Observable<void> {
     // Step 1: create the session
     return this.http
-      .post<SessionResponse>(`${this.base}/workout-sessions`, { userId, sessionDate, notes })
+      .post<SessionResponse>(`${this.base}/workout-sessions`, {
+        userId,
+        sessionDate,
+        notes,
+        workoutPlanId,
+      })
       .pipe(
         concatMap(session =>
           exercises.length === 0

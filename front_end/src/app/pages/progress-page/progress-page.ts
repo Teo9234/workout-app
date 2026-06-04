@@ -150,8 +150,11 @@ type SessionEntry = WorkoutSessionSummary & {
                         <span>Rest day</span>
                       </label>
                     } @else {
-                      @if (session.notes) {
-                        <p class="session-notes">{{ session.notes }}</p>
+                      @if (getSessionPlanSummary(session)) {
+                        <p class="session-notes session-notes--meta">{{ getSessionPlanSummary(session) }}</p>
+                      }
+                      @if (getVisibleSessionNotes(session)) {
+                        <p class="session-notes">{{ getVisibleSessionNotes(session) }}</p>
                       }
                     }
                     @if (!session.draftRestDay) {
@@ -696,6 +699,11 @@ type SessionEntry = WorkoutSessionSummary & {
       max-width: 400px;
     }
 
+    .session-notes--meta {
+      color: #1c6e8c;
+      font-weight: 600;
+    }
+
     .session-set-count {
       margin: 0;
       font-size: 0.8rem;
@@ -1106,7 +1114,7 @@ export class ProgressPageComponent {
             editingSets: false,
             savingSession: false,
             deletingSession: false,
-            draftNotes: s.notes ?? '',
+            draftNotes: this.stripMetadataTags(s.notes ?? ''),
             draftRestDay: s.restDay,
             actionError: '',
             addingSetExerciseIds: [],
@@ -1150,7 +1158,7 @@ export class ProgressPageComponent {
   protected startSessionEdit(session: SessionEntry): void {
     session.editingSession = true;
     session.actionError = '';
-    session.draftNotes = session.notes ?? '';
+    session.draftNotes = this.stripMetadataTags(session.notes ?? '');
     session.draftRestDay = session.restDay;
     this.cdr.detectChanges();
   }
@@ -1158,7 +1166,7 @@ export class ProgressPageComponent {
   protected cancelSessionEdit(session: SessionEntry): void {
     session.editingSession = false;
     session.actionError = '';
-    session.draftNotes = session.notes ?? '';
+    session.draftNotes = this.stripMetadataTags(session.notes ?? '');
     session.draftRestDay = session.restDay;
     this.cdr.detectChanges();
   }
@@ -1179,7 +1187,7 @@ export class ProgressPageComponent {
       sessionDate: session.sessionDate,
       startTime: session.startTime,
       endTime: session.endTime,
-      notes: session.draftNotes.trim() || null,
+      notes: this.mergeSessionNotesWithMetadata(session.notes ?? '', session.draftNotes),
       workoutPlanId: session.workoutPlanId,
       restDay: session.draftRestDay,
     };
@@ -1188,7 +1196,7 @@ export class ProgressPageComponent {
       next: (updated) => {
         session.notes = updated.notes;
         session.restDay = updated.restDay;
-        session.draftNotes = updated.notes ?? '';
+        session.draftNotes = this.stripMetadataTags(updated.notes ?? '');
         session.draftRestDay = updated.restDay;
         session.editingSession = false;
         if (updated.restDay) {
@@ -1468,6 +1476,31 @@ export class ProgressPageComponent {
     }).format(new Date(isoDate + 'T00:00:00'));
   }
 
+  protected getVisibleSessionNotes(session: SessionEntry): string {
+    return this.stripMetadataTags(session.notes ?? '');
+  }
+
+  protected getSessionPlanSummary(session: SessionEntry): string {
+    const notes = session.notes ?? '';
+    const planTypes = Array.from(new Set(this.extractPlanTypeTags(notes)));
+    const hasOddChoice = this.hasOddChoiceTag(notes);
+
+    const formattedPlans = planTypes.map((planType) => this.formatPlanType(planType));
+    const planSummary = formattedPlans.length > 0
+      ? `Plan type: ${formattedPlans.join(', ')}`
+      : '';
+
+    if (planSummary && hasOddChoice) {
+      return `${planSummary} + Odd choice`;
+    }
+
+    if (planSummary) {
+      return planSummary;
+    }
+
+    return hasOddChoice ? 'Odd choice' : '';
+  }
+
   private get workoutDateSet(): Set<string> {
     return new Set(this.sessions.filter((session) => !session.restDay).map((session) => session.sessionDate));
   }
@@ -1523,6 +1556,52 @@ export class ProgressPageComponent {
       month: 'short',
       day: 'numeric',
     }).format(date);
+  }
+
+  private mergeSessionNotesWithMetadata(existingRawNotes: string, editedNotes: string): string | null {
+    const planTypeTags = Array.from(new Set(this.extractPlanTypeTags(existingRawNotes)));
+    const metadataTags = planTypeTags.map((planType) => `[plan-type:${planType}]`);
+    if (this.hasOddChoiceTag(existingRawNotes)) {
+      metadataTags.push('[odd-choice]');
+    }
+
+    const cleanUserNotes = this.stripMetadataTags(editedNotes);
+    const metadataSuffix = metadataTags.join(' ');
+
+    if (cleanUserNotes.length > 0 && metadataSuffix.length > 0) {
+      return `${cleanUserNotes}\n${metadataSuffix}`;
+    }
+
+    if (cleanUserNotes.length > 0) {
+      return cleanUserNotes;
+    }
+
+    return metadataSuffix.length > 0 ? metadataSuffix : null;
+  }
+
+  private extractPlanTypeTags(notes: string): string[] {
+    const matches = notes.matchAll(/\[plan-type:([A-Z_]+)\]/gi);
+    return Array.from(matches, (match) => (match[1] ?? '').toUpperCase()).filter((tag) => tag.length > 0);
+  }
+
+  private hasOddChoiceTag(notes: string): boolean {
+    return /\[odd-choice\]/i.test(notes);
+  }
+
+  private stripMetadataTags(notes: string): string {
+    return notes
+      .replace(/\[(plan-type:[A-Z_]+|entry-count:\d+|odd-choice)\]/gi, '')
+      .replace(/[ \t]{2,}/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  private formatPlanType(planType: string): string {
+    return planType
+      .toLowerCase()
+      .split('_')
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join(' ');
   }
 
   private normalizeNumber(value: number | null | undefined): number | null {

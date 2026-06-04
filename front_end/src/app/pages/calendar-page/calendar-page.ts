@@ -1,6 +1,6 @@
 import { ChangeDetectorRef, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { finalize } from 'rxjs';
+import { catchError, finalize, forkJoin, of } from 'rxjs';
 import { UserService } from '../../shared/user.service';
 import { WorkoutApiService } from '../../shared/workout-api.service';
 
@@ -10,6 +10,7 @@ type CalendarDay = {
   isCurrentMonth: boolean;
   isToday: boolean;
   hasWorkout: boolean;
+  badges: string[];
 };
 
 @Component({
@@ -47,6 +48,13 @@ type CalendarDay = {
             [routerLink]="['/app/day', day.isoDate]"
           >
             <span class="day-number">{{ day.dayNumber }}</span>
+            @if (day.hasWorkout) {
+              <span class="day-icons">
+                @for (badge of day.badges; track $index) {
+                  <span class="day-icon" [class.day-icon--odd]="badge === 'ODD'">{{ badge }}</span>
+                }
+              </span>
+            }
             <span class="day-label">{{ day.hasWorkout ? 'Workout logged' : 'Open day' }}</span>
           </a>
         }
@@ -156,6 +164,37 @@ type CalendarDay = {
       color: #52606d;
     }
 
+    .day-icons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      margin: 6px 0;
+      max-width: 100%;
+      overflow: hidden;
+    }
+
+    .day-icon {
+      min-width: 24px;
+      height: 24px;
+      padding: 0 6px;
+      border-radius: 999px;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      background: #1c6e8c;
+      color: #ffffff;
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .day-icon--odd {
+      background: #9d2b25;
+    }
+
     @media (max-width: 720px) {
       .calendar-page {
         padding: 16px;
@@ -189,6 +228,7 @@ export class CalendarPageComponent {
   private readonly userService = inject(UserService);
   private readonly cdr = inject(ChangeDetectorRef);
   private workoutDates = new Set<string>();
+  private workoutBadgesByDate = new Map<string, string[]>();
 
   constructor() {
     this.refreshCalendar();
@@ -231,6 +271,7 @@ export class CalendarPageComponent {
     const user = this.userService.getMe();
     if (!user) {
       this.workoutDates = new Set<string>();
+      this.workoutBadgesByDate = new Map<string, string[]>();
       this.calendarDays = this.buildCalendarDays(this.currentMonth);
       this.cdr.detectChanges();
       return;
@@ -248,19 +289,60 @@ export class CalendarPageComponent {
     ));
 
     this.loadingSessions = true;
-    this.workoutApi.getSessionsBetween(user.id, monthStart, monthEnd).pipe(
+    forkJoin({
+      sessions: this.workoutApi.getSessionsBetween(user.id, monthStart, monthEnd),
+      plans: this.workoutApi.getWorkoutPlans().pipe(catchError(() => of([]))),
+    }).pipe(
       finalize(() => {
         this.loadingSessions = false;
         this.cdr.detectChanges();
       }),
     ).subscribe({
-      next: (sessions) => {
+      next: ({ sessions, plans }) => {
+        const planBadgeById = new Map<number, string>(
+          plans.map((plan) => [plan.id, this.toPlanTypeBadge(plan.planType)]),
+        );
+
         this.workoutDates = new Set(sessions.map((session) => session.sessionDate));
+        this.workoutBadgesByDate = new Map<string, string[]>();
+        for (const session of sessions) {
+          const badgesForDate = this.workoutBadgesByDate.get(session.sessionDate) ?? [];
+
+          const notes = session.notes ?? '';
+          const sessionPlanBadges: string[] = [];
+
+          if (session.workoutPlanId) {
+            const mappedPlanBadge = planBadgeById.get(session.workoutPlanId) ?? '';
+            if (mappedPlanBadge) {
+              sessionPlanBadges.push(mappedPlanBadge);
+            }
+          }
+
+          const taggedPlanTypes = this.extractPlanTypeTags(notes);
+          for (const taggedPlanType of taggedPlanTypes) {
+            const taggedBadge = this.toPlanTypeBadge(taggedPlanType);
+            if (taggedBadge) {
+              sessionPlanBadges.push(taggedBadge);
+            }
+          }
+
+          for (const sessionPlanBadge of sessionPlanBadges) {
+            badgesForDate.push(sessionPlanBadge);
+          }
+
+          if (this.hasOddTag(notes)) {
+            badgesForDate.push('ODD');
+          }
+
+          this.workoutBadgesByDate.set(session.sessionDate, badgesForDate);
+        }
+
         this.calendarDays = this.buildCalendarDays(this.currentMonth);
         this.cdr.detectChanges();
       },
       error: () => {
         this.workoutDates = new Set<string>();
+        this.workoutBadgesByDate = new Map<string, string[]>();
         this.calendarDays = this.buildCalendarDays(this.currentMonth);
         this.cdr.detectChanges();
       },
@@ -282,6 +364,7 @@ export class CalendarPageComponent {
       const isoDate = this.toIsoDate(date);
 
       return {
+        badges: this.normalizeBadgesForCell(this.workoutBadgesByDate.get(isoDate) ?? ['WO']),
         isoDate,
         dayNumber: date.getDate(),
         isCurrentMonth: date.getMonth() === anchorDate.getMonth(),
@@ -289,6 +372,61 @@ export class CalendarPageComponent {
         hasWorkout: this.workoutDates.has(isoDate),
       };
     });
+  }
+
+  private normalizeBadgesForCell(badges: string[]): string[] {
+    const cleaned = badges.filter((badge) => badge.length > 0);
+    if (cleaned.length === 0) {
+      return ['WO'];
+    }
+
+    const workoutBadges = Array.from(new Set(cleaned.filter((badge) => badge !== 'ODD'))).slice(0, 2);
+    const hasOdd = cleaned.includes('ODD');
+    const normalized = hasOdd ? [...workoutBadges, 'ODD'] : workoutBadges;
+
+    return normalized.length > 0 ? normalized.slice(0, 3) : ['WO'];
+  }
+
+  private toPlanTypeBadge(planType: string): string {
+    const normalized = planType.trim().toUpperCase();
+
+    const knownBadges: Record<string, string> = {
+      PUSH: 'PD',
+      PULL: 'PL',
+      LEGS: 'LD',
+      CARDIO: 'CD',
+      UPPER_BODY: 'UB',
+      LOWER_BODY: 'LB',
+      FULL_BODY: 'FB',
+      STRETCHING: 'ST',
+      BODYWEIGHT: 'BW',
+      CUSTOM: 'CU',
+    };
+
+    const mapped = knownBadges[normalized];
+    if (mapped) {
+      return mapped;
+    }
+
+    const segments = normalized.split('_').filter((segment) => segment.length > 0);
+    if (segments.length === 0) {
+      return '';
+    }
+
+    if (segments.length === 1) {
+      return segments[0].slice(0, 2).padEnd(2, 'X');
+    }
+
+    return `${segments[0][0]}${segments[1][0]}`;
+  }
+
+  private extractPlanTypeTags(notes: string): string[] {
+    const matches = notes.matchAll(/\[plan-type:([A-Z_]+)\]/gi);
+    return Array.from(matches, (match) => (match[1] ?? '').toUpperCase()).filter((tag) => tag.length > 0);
+  }
+
+  private hasOddTag(notes: string): boolean {
+    return /\[odd-choice\]/i.test(notes);
   }
 
   private toIsoDate(date: Date): string {
